@@ -24,9 +24,11 @@ NULL
 #' Imports the web-based database via its SOAP API.
 #' @param flag_ALSFRS_as_integers If set (the default) the ALSFRS questionnaire
 #'        gets output as integers, not labelled data.
+#' @param filename If not-empty, function will save the database into the excel
+#'        file with the given name
 #' @return Returns data.table version of the database.
 #' @export
-importWebDatabase<-function(flag_ALSFRS_as_integers=TRUE) {
+importWebDatabase<-function(filename=NULL, flag_ALSFRS_as_integers=TRUE) {
   # Read all the records in all the pages
   value_table_all<-load_all_patient_tables(getOption('onwebduals.webaddress'))
 
@@ -72,10 +74,40 @@ importWebDatabase<-function(flag_ALSFRS_as_integers=TRUE) {
     dbout<-data.table::copy(ref)
   }
 
-  savedb(db = dbout, filename = 'db_so_far.xlsx')
-  debugonce(post_processing_for_webdb)
   dbpp<-post_processing_for_webdb(dbout)
-  savedb(db = dbpp, filename = 'db_als_web.xlsx')
+  if(!is.null(filename)) {
+    savedb(db = dbpp, filename = filename)
+  }
+  return(dbpp)
+}
 
-  return(dbout)
+#' Recodes ALSFRS into integers
+recode_ALSFRS<-function(db) {
+  vars <-
+    c("q_51_1.1", "q_51_1.2", "q_51_1.3", "q_51_1.4", "q_51_1.5",
+      "q_51_1.6", "q_51_1.7", "q_51_1.8", "q_51_1.9", "q_51_1.10",
+      "q_51_1.11", "q_51_1.12", "q_51_2.1", "q_51_2.2", "q_51_2.3",
+      "q_51_2.4", "q_51_2.5", "q_51_2.6", "q_51_2.7", "q_51_2.8", "q_51_2.9",
+      "q_51_2.10", "q_51_2.11", "q_51_2.12")
+  for(varname in vars) {
+    var<-as.integer(db[[varname]])
+    danesurowe::copy_obj_attributes(obj_source = db[[varname]], obj_dest = var)
+    db[[varname]]<-var
+  }
+  return(db)
+}
+
+#' Simple function that saves the database in the Excel format
+savedb<-function(db, filename) {
+  db2<-data.table::copy(db)
+  labels<-danesurowe::GetVarLabel(db)
+  xlsx::write.xlsx(labels, filename, sheetName='labels')
+  for(i in seq_along(colnames(db))) {
+    if('labelled' %in% class(db[[i]])) {
+#      cat(paste0(i, '\n'))
+      #			browser()
+      db2[[i]]<-haven::as_factor(db[[i]])
+    }
+  }
+  xlsx::write.xlsx(db2, filename, append = TRUE, sheetName='data', col.names=TRUE, row.names=TRUE, showNA=FALSE)
 }

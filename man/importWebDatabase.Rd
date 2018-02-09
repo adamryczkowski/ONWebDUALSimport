@@ -4,9 +4,12 @@
 \alias{importWebDatabase}
 \title{Imports the web-based database via its SOAP API.}
 \usage{
-importWebDatabase(flag_ALSFRS_as_integers = TRUE)
+importWebDatabase(filename = NULL, flag_ALSFRS_as_integers = TRUE)
 }
 \arguments{
+\item{filename}{If not-empty, function will save the database into the excel
+file with the given name}
+
 \item{flag_ALSFRS_as_integers}{If set (the default) the ALSFRS questionnaire
 gets output as integers, not labelled data.}
 }

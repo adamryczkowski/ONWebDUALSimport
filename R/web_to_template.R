@@ -87,47 +87,6 @@ fill_template<-function(dtall, ref, dict, debug_n=100000){
 	return(ref)
 }
 
-#debugonce(fill_template)
-#ref<-fill_template(dtall=dtall)
-#fill_template(dtall=dtall, dict = dict, ref = ref)
-#dbout<-recode_ALSFRS(ref)
-#savedb(db = dbout, filename = 'db_so_far.xlsx')
-#debugonce(post_processing_for_webdb)
-#dbpp<-post_processing_for_webdb(dbout)
-#savedb(db = dbpp, filename = 'db_als_web.xlsx')
-
-recode_ALSFRS<-function(ref) {
-	vars <-
-		c("q_51_1.1", "q_51_1.2", "q_51_1.3", "q_51_1.4", "q_51_1.5",
-			"q_51_1.6", "q_51_1.7", "q_51_1.8", "q_51_1.9", "q_51_1.10",
-			"q_51_1.11", "q_51_1.12", "q_51_2.1", "q_51_2.2", "q_51_2.3",
-			"q_51_2.4", "q_51_2.5", "q_51_2.6", "q_51_2.7", "q_51_2.8", "q_51_2.9",
-			"q_51_2.10", "q_51_2.11", "q_51_2.12")
-	for(varname in vars) {
-		var<-as.integer(ref[[varname]])
-		danesurowe::copy_obj_attributes(obj_source = ref[[varname]], obj_dest = var)
-		ref[[varname]]<-var
-	}
-	return(ref)
-}
-
-get_dict<-function(filename='web_xls_dic.xlsx') {
-	dict<-xlsx::read.xlsx(file=filename, sheetName = 1, colClasses = 'character')
-	var<-dict$ExistingSourceName
-	valid_rows<-!is.na(var)
-	dict<-dict[valid_rows,]
-	dict$ExistingSourceName<-as.character(dict$ExistingSourceName)
-	dict$colname<-as.character(dict$colname)
-	dict$Type_of_conversion_1<-as.character(dict$Type_of_conversion_1)
-	dict$Par_1<-as.character(dict$Par_1)
-	dict$Type_of_conversion_2<-as.character(dict$Type_of_conversion_2)
-	dict$Par_2<-as.character(dict$Par_2)
-	dict<-dplyr::select(dict, web_colname=colname, target_colname=ExistingSourceName,
-											convtype1=Type_of_conversion_1, par1=Par_1,
-											convtype2=Type_of_conversion_2, par2=Par_2)
-	return(dict)
-}
-
 factor_by_value<-function(var_from, var_target, pars_in, do_debug) {
 	dic_from<-sort(unique(as.integer(var_from)))
 	dic_from_left<-dic_from
