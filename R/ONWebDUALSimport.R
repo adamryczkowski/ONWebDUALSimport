@@ -58,8 +58,8 @@ importWebDatabase<-function(flag_ALSFRS_as_integers=TRUE) {
 
   # Read the dictionary that translates the layout of the web database
   # to the layout of the Excel file. It is stored in a separate file
-  dic_filename<-system.file(getOption('onwebduals.webdocs'),package='ONWebDUALSimport')
-  dict<-get_dict(dic_filename)
+  dic_filename<-system.file(getOption('onwebduals.web2xls_dic'),package='ONWebDUALSimport')
+  dict<-get_web_2_xls_dict(dic_filename)
 
   # Fill the reference database with the web entries after they are
   # transcoded according to the dict. ref gets updated by reference.

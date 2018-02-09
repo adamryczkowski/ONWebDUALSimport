@@ -35,3 +35,29 @@ get_reference_structure<-function(outputfile='webstruct.xlsx', reference_source=
 	savedb(dtall_struct,'webstruct.xlsx')
 }
 
+
+#' Gets the dictionary that translates web database (in its raw form) into the
+#' reference database.
+#'
+#' @param filename Path to the dictionary (if different than the included in the library)
+#' @return Returns the dictionary in the form of the data.frame
+#' @export
+get_web_2_xls_dict<-function(filename=NULL) {
+  if(is.null(filename)) {
+    filename<-system.file(getOption('onwebduals.web2xls_dic'),package='ONWebDUALSimport')
+  }
+  dict<-xlsx::read.xlsx(file=filename, sheetName = 1, colClasses = 'character')
+  var<-dict$ExistingSourceName
+  valid_rows<-!is.na(var)
+  dict<-dict[valid_rows,]
+  dict$ExistingSourceName<-as.character(dict$ExistingSourceName)
+  dict$colname<-as.character(dict$colname)
+  dict$Type_of_conversion_1<-as.character(dict$Type_of_conversion_1)
+  dict$Par_1<-as.character(dict$Par_1)
+  dict$Type_of_conversion_2<-as.character(dict$Type_of_conversion_2)
+  dict$Par_2<-as.character(dict$Par_2)
+  dict<-dplyr::select(dict, web_colname=colname, target_colname=ExistingSourceName,
+                      convtype1=Type_of_conversion_1, par1=Par_1,
+                      convtype2=Type_of_conversion_2, par2=Par_2)
+  return(dict)
+}

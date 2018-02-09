@@ -18,6 +18,7 @@ Imports:
   purrr,
   dplyr,
   readxl,
+  xlsx,
   danesurowe
 Depends:
   data.table,
