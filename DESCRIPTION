@@ -16,5 +16,8 @@ Imports:
   XML,
   tibble,
   purrr,
-  dplyr
+  dplyr,
+  readxl
+Depends:
+  data.table
 RoxygenNote: 6.0.1

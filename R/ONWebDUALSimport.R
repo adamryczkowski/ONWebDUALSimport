@@ -30,20 +30,28 @@ importWebDatabase<-function(flag_ALSFRS_as_integers=TRUE) {
   value_table_all<-load_all_patient_tables(getOption('onwebduals.webaddress'))
 
   # Remove all the test cases
-  vtable_not_deleted<-value_table[value_table$is_deleted!='true',]
+  vtable_not_deleted<-value_table_all[value_table_all$is_deleted!='true',]
   vtable_not_test<-vtable_not_deleted[stringr::str_sub(vtable_not_deleted$uid,1, 3)!='TES',]
   value_table<-vtable_not_test[!is.na(vtable_not_test$patient_id),]
 
-  # Using the web documentaion (in separate file) we associate
+  # Read in the documentation for the web service to get the dictionaries for
+  # variables' labels. The documentation is held in the separate (included) file.
+  docs_filename<-system.file(getOption('onwebduals.webdocs'),package='ONWebDUALSimport')
+  app_dict<-read_dictionaries_xlsx(docs_filename)
 
-  # dictionaries with the questions, and read in nested questionnaires.
-  dtall<-suppressWarnings(read_through_dicts2(value_table), webaddress=getOption('onwebduals.webaddress'))
+  # Using the web documentaion associate dictionaries with the questions,
+  # and also read in nested questionnaires (modelled as one-to-many relationship
+  # in the underlying relational database that powers the service).
+  #
+  # During the read, any missing labels are reported as (human-readable) warnings. We suppress
+  # them, because we accept silent conversion of all these cases into NA
+  dtall<-suppressWarnings(read_through_dicts2(value_table = value_table, app_dict = app_dict,
+                                              webaddress=getOption('onwebduals.webaddress')))
 
   # Read the reference format for the database.
   # The format is present in the separate Excel file.
   # In this reference file there are all necessary meta-data, including
   # validation info
-  docs_filename<-system.file(getOption('onwebduals.webdocs'),package='ONWebDUALSimport')
   ref<-read_ref(row_length = nrow(dtall), webDocumentation=docs_filename)
 
   # Read the dictionary that translates the layout of the web database
