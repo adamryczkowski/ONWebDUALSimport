@@ -11,7 +11,8 @@ NULL
   op.onwebduals	<-	list(
     onwebduals.webaddress="http://10.150.24.67/OWSMain.asmx",
     onwebduals.webdocs="app_dictionaries.xlsx",
-    onwebduals.web2xls_dic="web_xls_dic.xlsx"
+    onwebduals.web2xls_dic="web_xls_dic.xlsx",
+    onwebduals.dbtemplate="DBTemplate.xlsm"
   )
   toset	<-	!(names(op.onwebduals)	%in%	names(op))
   if(any(toset))	options(op.onwebduals[toset])
@@ -51,8 +52,9 @@ importWebDatabase<-function(flag_ALSFRS_as_integers=TRUE) {
   # Read the reference format for the database.
   # The format is present in the separate Excel file.
   # In this reference file there are all necessary meta-data, including
-  # validation info
-  ref<-read_ref(row_length = nrow(dtall), webDocumentation=docs_filename)
+  # the code that does the validation
+  dbtemplate_filename<-system.file(getOption('onwebduals.dbtemplate'),package='ONWebDUALSimport')
+  ref<-read_ref(row_length = nrow(dtall), reference_source = dbtemplate_filename)
 
   # Read the dictionary that translates the layout of the web database
   # to the layout of the Excel file. It is stored in a separate file
