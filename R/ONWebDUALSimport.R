@@ -10,9 +10,10 @@ NULL
   op	<-	options()
   op.onwebduals	<-	list(
     onwebduals.webaddress="http://10.150.24.67/OWSMain.asmx",
-    onwebduals.webdocs="app_dictionaries.xlsx",
-    onwebduals.web2xls_dic="web_xls_dic.xlsx",
-    onwebduals.dbtemplate="DBTemplate.xlsm"
+    onwebduals.webdocs="app_dictionaries.xlsx", #documentation of the web database. Information about mapping dictionaries to questions
+    onwebduals.web2xls_dic="web_xls_dic.xlsx", #Mapping between column names in web database and the reference database. Information about simple recodings
+    onwebduals.dbtemplate="DBTemplate.xlsm", #Reference database. Only structure, no cases.
+    onwebduals.als_ctrl_dic="als_ctrl_dic.xlsx" #Dictionary that mapps question names in the control group to question names in the ALS group
   )
   toset	<-	!(names(op.onwebduals)	%in%	names(op))
   if(any(toset))	options(op.onwebduals[toset])
@@ -110,4 +111,31 @@ savedb<-function(db, filename) {
     }
   }
   xlsx::write.xlsx(db2, filename, append = TRUE, sheetName='data', col.names=TRUE, row.names=TRUE, showNA=FALSE)
+}
+
+
+#' Reads in all the Excel databases
+#' @param path_prefix Path containing all the input files. For security reasons the files
+#'        are not provided with the library.
+#' @param filename If not-empty, function will save the database into the excel
+#'        file with the given name
+#' @return Returns data.table version of the database.
+#' @export
+importXLSDatabases<-function(filename=NULL, path_prefix=NULL) {
+  if(is.null(path_prefix)) {
+    path_prefix<-'/home/Adama-docs/Adam/MyDocs/praca/masia@ibib/ALSdatabase'
+  }
+  db_als<-joinExcels(prefix = path_prefix, flag_control = FALSE)
+  db_ctrl<-joinExcels(prefix = path_prefix, flag_control = TRUE)
+
+  als_ctrl_dic_filename<-system.file(getOption('onwebduals.als_ctrl_dic'),package='ONWebDUALSimport')
+  als_ctrl_dic<-getALS_control_dic(als_ctrl_dic_filename)
+
+  joined_db<-joinALS_Ctrl(db_als = db_als, db_ctrl = db_ctrl, als_ctrl_dic)
+
+
+  if(!is.null(filename)) {
+    savedb(db = joined_db, filename = filename)
+  }
+  return(joined_db)
 }

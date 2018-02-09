@@ -21,6 +21,7 @@ Imports:
   xlsx,
   lubridate,
   haven,
+  Hmisc,
   danesurowe
 Depends:
   data.table,
