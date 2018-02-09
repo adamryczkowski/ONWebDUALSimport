@@ -1,9 +1,9 @@
 read_ANTA<-function(prefix, flag_control=FALSE) {
 	if(flag_control) {
-		ref_file <- file.path(prefix, 'ANTA/entry format/control/Excel questionnaire_ANTControl_2017(Warsaw).xlsx')
+		ref_file <- file.path(prefix, 'control/ANTA/Excel questionnaire_ANTControl_2017(Warsaw).xlsx')
 		ans<-read_file(ref_file)
 	} else {
-		ref_file <- file.path(prefix, 'ANTA/entry format/als/ANTA patients all 111.xlsx')
+		ref_file <- file.path(prefix, 'ALS/ANTA/ANTA patients all 111.xlsx')
 		ans<-read_file(ref_file)
 	}
 	return(convertANTA(ans$df, flag_control=flag_control))
@@ -11,19 +11,19 @@ read_ANTA<-function(prefix, flag_control=FALSE) {
 
 read_HANN<-function(prefix, flag_control=FALSE) {
 	if(flag_control) {
-		ref_file1 <- file.path(prefix, 'HANN/entry format/control/Kontrollpersonen Tabelle 1.xlsx')
+		ref_file1 <- file.path(prefix, 'control/HANN/control/Kontrollpersonen Tabelle 1.xlsx')
 		ref1<-read_file(ref_file1)
 		ref1$q_0<-stringr::str_replace(toupper(ref1$q_0), pattern=stringr::regex("^HANN([0-9]+)$"), replacement="HANN0\\1")
 
-		ref_file2 <- file.path(prefix, 'HANN/entry format/control/Kontrollpersonen Tabelle 2.xlsx')
+		ref_file2 <- file.path(prefix, 'control/HANN/Kontrollpersonen Tabelle 2.xlsx')
 		ref2<-read_file(ref_file2)
 		ref2$q_0<-stringr::str_replace(toupper(ref2$q_0), pattern=stringr::regex("^HANN([0-9]+)$"), replacement="HANN0\\1")
 
 		ans<-rbind(ref1$df, ref2$df)
 	} else {
-		ref_file1 <- file.path(prefix, 'HANN/entry format/als/Patienten Tabelle 1-01-2017.xlsx')
+		ref_file1 <- file.path(prefix, 'ALS/HANN/Patienten Tabelle 1-01-2017.xlsx')
 		ref1<-read_file(ref_file1)
-		ref_file2 <- file.path(prefix, 'HANN/entry format/als/Patienten Tabelle 2.xlsx')
+		ref_file2 <- file.path(prefix, 'ALS/HANN/Patienten Tabelle 2.xlsx')
 		ref2<-read_file(ref_file2)
 		ans<-rbind(ref1$df, ref2$df)
 	}
@@ -34,14 +34,14 @@ read_HANN<-function(prefix, flag_control=FALSE) {
 
 read_JENA<-function(prefix, flag_control=FALSE) {
 	if(flag_control) {
-		ref_file<-file.path(prefix, 'JENA/entry format/control/Excel questionnaire Jena Control_20170531.xlsx')
+		ref_file<-file.path(prefix, 'control/JENA/Excel questionnaire Jena Control_20170531.xlsx')
 		ans<-read_file(ref_file)
 		return(convertJENA(ans$df, flag_control))
 	} else {
-		ref_file1<-file.path(prefix, 'JENA/entry format/als/Excel questionnaire Jena Patient_20170531.xlsx')
+		ref_file1<-file.path(prefix, 'ALS/JENA/Excel questionnaire Jena Patient_20170531.xlsx')
 		ref1<-read_file(ref_file1)$df
 		ref1<-convertJENA(ref1, flag_control, 'Excel questionnaire Jena Patient_20170531.xlsx')
-		ref_file2<-file.path(prefix, 'JENA/entry format/als/Excel questionnaire_20160902 Jena.xlsx')
+		ref_file2<-file.path(prefix, 'ALS/JENA/Excel questionnaire_20160902 Jena.xlsx')
 		ref2<-read_file(ref_file2)$df
 		ref2<-convertJENA(ref2, flag_control, 'Excel questionnaire_20160902 Jena.xlsx')
 		delcase<-which(ref2$q_0=='JENA0073')
@@ -54,11 +54,11 @@ read_JENA<-function(prefix, flag_control=FALSE) {
 
 read_LISB<-function(prefix, flag_control=FALSE) {
 	if(flag_control) {
-		ref_file <- file.path(prefix, 'LISB/edit format/control/LISB (2-Control)_Marta.xlsm')
+		ref_file <- file.path(prefix, 'control/LISB/LISB (2-Control)_Marta.xlsm')
 		ans<-danesurowe::readDaneSurowe(ref_file)
 		return(convertLISB(ans, flag_control))
 	} else {
-		ref_file <- file.path(prefix, 'LISB/edit format/als/als (2)_Lisbon reviewed_marta_3april.xlsm')
+		ref_file <- file.path(prefix, 'ALS/LISB/als (2)_Lisbon reviewed_marta_3april.xlsm')
 		ans<-danesurowe::readDaneSurowe(ref_file)
 		return(convertLISB(ans, flag_control))
 	}
@@ -66,7 +66,7 @@ read_LISB<-function(prefix, flag_control=FALSE) {
 
 read_WAWA<-function(prefix, flag_control=FALSE) {
 	if(flag_control) {
-		ref_file1 <- file.path(prefix, 'WAWA/entry format/control/OnWeb WAWA control 10.01.2017_FIX.xlsx')
+		ref_file1 <- file.path(prefix, 'control/WAWA/OnWeb WAWA control 10.01.2017_FIX.xlsx')
 		ref1<-read_file(ref_file1)
 #		ref_file2 <- 'WAWA/entry format/control/OnWeb WARS control.xlsx'
 #		ref2<-read_file(ref_file2)
@@ -75,7 +75,7 @@ read_WAWA<-function(prefix, flag_control=FALSE) {
 		ans<-convertWAWA(ref1$df, TRUE)
 		return(ans)
 	} else {
-		ref_file <- file.path(prefix, 'WAWA/entry format/als/OnWeb WARS patients.xlsx')
+		ref_file <- file.path(prefix, 'ALS/WAWA/OnWeb WARS patients.xlsx')
 		ans<-read_file(ref_file)
 		return(convertWAWA(ans$df, FALSE))
 	}
