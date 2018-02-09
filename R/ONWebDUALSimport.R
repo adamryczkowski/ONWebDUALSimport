@@ -63,7 +63,7 @@ importWebDatabase<-function(flag_ALSFRS_as_integers=TRUE) {
 
   # Fill the reference database with the web entries after they are
   # transcoded according to the dict. ref gets updated by reference.
-  fill_template(dtall=dtall, dict = dict, ref = ref)
+  ref<-fill_template(dtall=dtall, dict = dict, ref = ref)
 
   # If required, transcode ALSFRS into integers (instead of labelled data)
   if(flag_ALSFRS_as_integers) {
