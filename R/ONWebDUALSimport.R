@@ -123,7 +123,7 @@ savedb<-function(db, filename) {
 #' @export
 importXLSDatabases<-function(filename=NULL, path_prefix=NULL) {
   if(is.null(path_prefix)) {
-    path_prefix<-'/home/Adama-docs/Adam/MyDocs/praca/masia@ibib/ALSdatabase'
+    path_prefix<-'Excel'
   }
   db_als<-joinExcels(prefix = path_prefix, flag_control = FALSE)
   db_ctrl<-joinExcels(prefix = path_prefix, flag_control = TRUE)
@@ -138,4 +138,9 @@ importXLSDatabases<-function(filename=NULL, path_prefix=NULL) {
     savedb(db = joined_db, filename = filename)
   }
   return(joined_db)
+}
+
+
+importAllDatabases<-function(path_prefix=NULL, flag_ALSFRS_as_integers=TRUE) {
+
 }

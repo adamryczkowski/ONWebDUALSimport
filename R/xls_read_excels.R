@@ -11,7 +11,7 @@ read_ANTA<-function(prefix, flag_control=FALSE) {
 
 read_HANN<-function(prefix, flag_control=FALSE) {
 	if(flag_control) {
-		ref_file1 <- file.path(prefix, 'control/HANN/control/Kontrollpersonen Tabelle 1.xlsx')
+		ref_file1 <- file.path(prefix, 'control/HANN/Kontrollpersonen Tabelle 1.xlsx')
 		ref1<-read_file(ref_file1)
 		ref1$q_0<-stringr::str_replace(toupper(ref1$q_0), pattern=stringr::regex("^HANN([0-9]+)$"), replacement="HANN0\\1")
 
