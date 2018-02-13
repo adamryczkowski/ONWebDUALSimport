@@ -42,10 +42,7 @@ get_reference_structure<-function(outputfile='webstruct.xlsx', reference_source=
 #' @param filename Path to the dictionary (if different than the included in the library)
 #' @return Returns the dictionary in the form of the data.frame
 #' @export
-get_web_2_xls_dict<-function(filename=NULL) {
-  if(is.null(filename)) {
-    filename<-system.file(getOption('onwebduals.web2xls_dic'),package='ONWebDUALSimport')
-  }
+get_dict<-function(filename) {
   dict<-xlsx::read.xlsx(file=filename, sheetName = 1, colClasses = 'character')
   var<-dict$ExistingSourceName
   valid_rows<-!is.na(var)
@@ -56,7 +53,7 @@ get_web_2_xls_dict<-function(filename=NULL) {
   dict$Par_1<-as.character(dict$Par_1)
   dict$Type_of_conversion_2<-as.character(dict$Type_of_conversion_2)
   dict$Par_2<-as.character(dict$Par_2)
-  dict<-dplyr::select(dict, web_colname=colname, target_colname=ExistingSourceName,
+  dict<-dplyr::select(dict, in_colname=colname, out_colname=ExistingSourceName,
                       convtype1=Type_of_conversion_1, par1=Par_1,
                       convtype2=Type_of_conversion_2, par2=Par_2)
   return(dict)

@@ -1,93 +1,164 @@
+
+
 #Loads the template with the database read from the web, using the web_xls_dic.xlsx dictionary
-fill_template<-function(dtall, ref, dict, debug_n=100000){
+fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 	options(warn=2)
 
-	for(colnr in seq(length.out=nrow(dict))) {
+  ref_out_dt<-data.table::copy(out_dt) #Copy for the reference
+
+  i<-1
+  flag_end<-FALSE
+  while(!flag_end) {
 		#We iterate over columns
-		if(!danesurowe::IsVariableValidation(dt = dtall, varnr = colnr)){
-			web_colname<-dict$web_colname[[colnr]]
-			target_colname<-dict$target_colname[[colnr]]
 
-			cat(paste0("Inserting variable nr ", colnr, ": ", web_colname, "->", target_colname, '\n'))
-			#if(colnr>=361) browser()
+    if(!is.na(dict$convtype1[[i]])) {
+      if(dict$convtype1[[i]]=='cont') {
+        browser()
+      }
+    }
 
-			if(!web_colname %in% colnames(dtall)) {
-				browser() #Dodn't find the web_colname in dtall
-			}
-			var<-dtall[[web_colname]]
-			if(!target_colname %in% colnames(ref)) {
-				browser() #Cannot find target_colname in target dic!
-			}
-			if(!is.na(dict$convtype1[[colnr]])) {
-				funname<-dict$convtype1[[colnr]]
-				par<-dict$par1[[colnr]]
-				if(colnr>=debug_n) {
-					browser()
-				}
-
-				fun<-eval(parse(text=funname))
-				var2<-fun(var, ref[[target_colname]], par, colnr>=debug_n)
-				if(colnr>=debug_n) {
-					browser()
-				}
-				var<-var2
-			}
-			if(!is.na(dict$convtype2[[colnr]])) {
-				browser()
-				funname<-dict$convtype2[[colnr]]
-				par<-dict$par2[[colnr]]
-				if(colnr>=debug_n) {
-					browser()
-				}
-
-				fun<-eval(parse(text=funname))
-				var2<-fun(var, ref[[target_colname]], par, colnr>=debug_n)
-				if(colnr>=debug_n) {
-					browser()
-				}
-				var<-var2
-			}
-			web_type<-danesurowe::class2vartype_str(class(var))
-			target_type<-danesurowe::class2vartype_str(class(ref[[target_colname]]))
-			if(web_type != target_type) {
-				type_comb<-paste0(web_type, target_type)
-				#cat(paste0(type_comb, '\n'))
-				if(type_comb=='SN') {
-					var2<-as.numeric(stringr::str_replace(stringr::str_replace_all(var, ',', '.'), pattern = stringr::regex('^NA$'), NA_character_))
-				} else if (target_type %in% c('F', 'L')) {
-					uq<-setdiff(unique(var), NA)
-					r<-setdiff(uq, c(NA, seq(length(uq))))
-					if(length(r)>0) {
-						if(colnr>=debug_n) {
-							browser()
-						}
-					}
-					var2<-as.integer(var)
-				} else if (target_type %in% c('I')) {
-					var2<-as.integer(var)
-				} else {
-					browser()
-				}
-				var<-var2
-			}
-			web_type<-danesurowe::class2vartype_str(class(var))
-			target_type<-danesurowe::class2vartype_str(class(ref[[target_colname]]))
-			type_comb<-paste0(web_type, target_type)
-			if(web_type != target_type && !type_comb %in% c('IF', 'NL', 'IL')) {
-				browser()
-			} else {
-				suppressWarnings(set(x = ref, i=seq(length.out=nrow(dtall)), j = target_colname, value = var))
-			}
-			if(colnr>=debug_n) {
-				browser()
-			}
-
+		in_colnames<-dict$in_colname[[i]]
+		if(stringr::str_detect(in_colnames, stringr::fixed(':'))) {
+		  ans<-stringr::str_match(in_colnames, stringr::regex('^(.*):(.*)$') )
+		  var_start<-ans[[2]]
+		  var_end<-ans[[3]]
+		  pos_start<-which(colnames(in_dt)==var_start)
+		  if(length(pos_start)!=1) {
+		    browser()
+		  }
+		  pos_end<-which(colnames(in_dt)==var_end)
+		  if(length(pos_end)!=1) {
+		    browser()
+		  }
+		  in_colnames<-colnames(in_dt)[seq(pos_start, pos_end)]
+		} else {
+		  if(!in_colnames %in% colnames(in_dt)) {
+		    browser() #Dodn't find the web_colname in dtall
+		  }
 		}
+
+		#if(colnr>=361) browser()
+
+    if(is.na(dict$convtype1[[i]])) {
+      flag_cont<-FALSE
+    } else {
+      if(dict$convtype1[[i]]=='cont') {
+        flag_cont<-TRUE
+      } else {
+        flag_cont<-FALSE
+      }
+    }
+		if(flag_cont) {
+		  j<-i
+      while(dict$convtype1[[j]]=='cont') {
+        if(! out_colname[[j]] %in% colnames(out_dt)) {
+          browser()
+        }
+        out_colname<-c(out_colname, dict$out_colname[[j]])
+        if(j<nrow(dict)) {
+          j<-j+1
+        } else {
+          j<-j+1
+          break
+        }
+      }
+		  next_i<-j-1
+		} else {
+		  out_colnames<-dict$out_colname[[i]]
+		  if(! out_colnames %in% colnames(out_dt)) {
+		    browser()
+		  }
+		  next_i <- i + 1
+		}
+
+		cat(paste0("Interpreting row ", i, ": (",
+		           paste0(in_colnames, collapse=', '), ")->(",
+		           paste0(out_colnames, collapse=', '), ')\n'))
+
+
+		if(!is.na(dict$convtype1[[i]])) {
+			funname<-dict$convtype1[[i]]
+			par<-dict$par1[[i]]
+			if(i>=debug_n) {
+				browser()
+			}
+
+			fun<-eval(parse(text=funname))
+			out_dt<-fun(in_dt, in_colnames, out_dt, out_colnames, par, i>=debug_n)
+			if(i>=debug_n) {
+				browser()
+			}
+
+			if(!is.na(dict$convtype2[[i]])) {
+			  browser()
+			  funname<-dict$convtype2[[i]]
+			  par<-dict$par2[[i]]
+			  if(i>=debug_n) {
+			    browser()
+			  }
+
+			  fun<-eval(parse(text=funname))
+			  out_dt<-fun(in_dt, in_colnames, out_dt, out_colnames, par, i>=debug_n)
+			  if(i>=debug_n) {
+			    browser()
+			  }
+			}
+
+		} else {
+		  if(length(out_colnames)==1 && length(in_colnames)==1) {
+		    var<-ref_out_dt[[out_colnames]]
+		    in_type<-danesurowe::class2vartype_str(class(var))
+		    out_type<-danesurowe::class2vartype_str(class(out_dt[[out_colnames]]))
+		    if(out_type != in_type) {
+		      type_comb<-paste0(out_type, in_type)
+		      #cat(paste0(type_comb, '\n'))
+		      if(type_comb=='SN') {
+		        var2<-as.numeric(stringr::str_replace(stringr::str_replace_all(var, ',', '.'),
+		                                              pattern = stringr::regex('^NA$'), NA_character_))
+		      } else if (out_type %in% c('F', 'L')) {
+		        uq<-setdiff(unique(var), NA)
+		        r<-setdiff(uq, c(NA, seq(length(uq))))
+		        if(length(r)>0) {
+		          if(i>=debug_n) {
+		            browser()
+		          }
+		        }
+		        var2<-as.integer(var)
+		      } else if (out_type %in% c('I')) {
+		        var2<-as.integer(var)
+		      } else {
+		        browser()
+		      }
+		      var<-var2
+		    }
+		    if(in_type != out_type && !type_comb %in% c('IF', 'NL', 'IL')) {
+		      browser()
+		    } else {
+		      suppressWarnings(set(x = out_dt, i=seq(length.out=nrow(out_dt)), j = out_colnames, value = var))
+		    }
+
+		  } else {
+		    browser()
+		  }
+		}
+
+		if(i>=debug_n) {
+			browser()
+		}
+
+		if(i==nrow(dict)) {
+		  flag_end<-TRUE
+		} else {
+		  i<-next_i
+		}
+
 	}
-	return(ref)
+	return(out_dt)
 }
 
-factor_by_value<-function(var_from, var_target, pars_in, do_debug) {
+factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug) {
+  var_from<-in_dt[[in_varname]]
+  var_target<-out_dt[[out_varname]]
 	dic_from<-sort(unique(as.integer(var_from)))
 	dic_from_left<-dic_from
 	dic_to<-dic_from
@@ -97,7 +168,8 @@ factor_by_value<-function(var_from, var_target, pars_in, do_debug) {
 	}
 
 	if(is.na(pars_in)) {
-		return(as.integer(var_from))
+	  out_dt[,(out_varname):=as.integer(var_from)]
+	  return(out_dt)
 	} else {
 		pars<-stringr::str_split(pars_in, pattern=stringr::fixed(";"))[[1]]
 	}
@@ -150,8 +222,10 @@ factor_by_value<-function(var_from, var_target, pars_in, do_debug) {
 					}
 				}
 			}
+		} else if(par=='')  {
+			# do nothing
 		} else {
-			browser() #Unknown pattern
+		  browser() #Unknown pattern
 		}
 	}
 	#Now we have two arrays that make a replacement dictionary.
@@ -170,15 +244,27 @@ factor_by_value<-function(var_from, var_target, pars_in, do_debug) {
 			var_out[as.integer(var_from)==dic_from[[i]] ]<-dic_to[[i]]
 		}
 	}
-	return(var_out)
+	out_dt[,(out_varname):=var_out]
+#	return(var_out)
+	return(out_dt)
 }
 
-yesno_by_integer<-function(var_from, var_target, pars_in, do_debug) {
-	as.integer(var_from+1)
+yesno_by_integer<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug) {
+  var_from<-in_dt[[in_varname]]
+#  var_target<-out_dt[[out_varname]]
+
+  out_dt[,(out_varname):=as.integer(var_from+1)]
+  #	return(var_out)
+  return(out_dt)
 }
 
 
-Date_by_value<-function(var_from, var_target, pars_in, do_debug) {
-	dt<-lubridate::parse_date_time(var_from, 'Y!m!*dH!M!S!z!*')
-	return(as.Date(round(dt, 'day')))
+Date_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug) {
+  var_from<-in_dt[[in_varname]]
+  var_target<-out_dt[[out_varname]]
+  dt<-lubridate::parse_date_time(var_from, 'Y!m!*dH!M!S!z!*')
+  out_dt[,(out_varname):=as.Date(round(dt, 'day'))]
+  #	return(var_out)
+  return(out_dt)
+
 }
