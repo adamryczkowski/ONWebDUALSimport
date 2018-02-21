@@ -5,7 +5,7 @@
 #' @param reference_source Path to the reference source. Defaults
 #'        to the reference shipped with the library.
 
-read_ref<-function(row_length=0, reference_source=NULL) {
+read_ref<-function(row_length=0, reference_source=NULL, flag_ALSFRS_as_integers=TRUE) {
   if(is.null(reference_source)) {
     reference_source<-system.file(getOption('onwebduals.dbtemplate'),package='ONWebDUALSimport')
   }
@@ -18,7 +18,9 @@ read_ref<-function(row_length=0, reference_source=NULL) {
 		template<-rbind(template, lp=seq(length.out=row_length), fill=TRUE)
 		template<-danesurowe::copy_dt_attributes(dt_source = tmpl, dt_dest=template)
 	}
-
+  if(flag_ALSFRS_as_integers==TRUE) {
+    template<-recode_ALSFRS(template)
+  }
 	return(template)
 }
 
@@ -32,7 +34,7 @@ get_reference_structure<-function(outputfile='webstruct.xlsx', reference_source=
     reference_source<-system.file(getOption('onwebduals.dbtemplate'),package='ONWebDUALSimport')
   }
   dtall_struct<-danesurowe::create_df_from_df_structure(dtall)
-	savedb(dtall_struct,'webstruct.xlsx')
+  savedb(dtall_struct,'webstruct.xlsx')
 }
 
 

@@ -12,6 +12,131 @@ NULL
     onwebduals.webaddress="http://10.150.24.67/OWSMain.asmx",
     onwebduals.webdocs="app_dictionaries.xlsx", #documentation of the web database. Information about mapping dictionaries to questions
     onwebduals.web2xls_dic="web_xls_dic.xlsx", #Mapping between column names in web database and the reference database. Information about simple recodings
+    onwebduals.xls2xls_dic="readLabelSheet3<-function(file, dt, colcnt)
+{
+  rngName<-getOption('rng_LabelOrigin')
+  address<-danesurowe::getNamedRange(file, rngName)
+
+  rng<-readSheet(path=address$file, sheet=address$sheetname, skip=0, colcnt=colcnt+4)
+
+  rng[,(1):=NULL] #Drop first column
+  rng[,(1):=NULL] #Drop column
+  rng[,(1):=NULL] #for Lp.
+  rng<-rng[3:nrow(rng),]
+
+  rowcnt <- nrow(rng)
+
+  setLabels<-function(varnr, dt)
+  {
+  rngLevels<-rng[[(varnr)*2+1]]
+  if (!all(is.na(rngLevels))){
+  # if (varnr==178)
+  # {
+  #   browser()
+  # }
+  }
+
+  if (!all(is.na(rngLevels)))
+  {
+  #      if (varnr==178)
+  #      {
+  #                browser()
+  #      }
+  maxNA<-match(TRUE, is.na(rngLevels))
+  if (is.na(maxNA))
+  {
+  maxNA<-rowcnt+1
+  }
+  if(varnr==355)
+  {
+  #   browser()
+  }
+  rngLevels<-rngLevels[1:(maxNA-1)]
+  rngLabels<-rng[[(varnr)*2+2]]
+  #      cat(paste(varnr,'\n'))
+
+  if (identical(sort(suppressWarnings(as.integer(rngLevels))),seq_along(rngLevels)))
+  {
+  #Standard factor
+  ord<-order(as.integer(rngLevels))
+  rngLabels<-rngLabels[ord]
+  label<-attr(dt[[varnr]],'label', exact = TRUE)
+  var<-as.integer(dt[[varnr]])
+  setattr(var,'levels',rngLabels)
+  setattr(var,'class','factor')
+  setattr(var,'label',label)
+  dt[,(varnr):=var]
+  } else {
+  #Labelled variable
+  numLevels<-suppressWarnings(as.numeric(rngLevels))
+  if (sum(is.na(numLevels))==0)
+  {
+  rngLevels<-numLevels
+  if (min(abs(c(rngLevels%%1, rngLevels%%1-1))) < 0.0000000000005)
+  {
+  rngLevels<-as.integer(rngLevels)
+  label<-attr(dt[[varnr]],'label', exact = TRUE)
+  dt[, varnr:=as.integer(dt[[varnr]]), with=FALSE]
+  setattr(dt[[varnr]],'label',label)
+  }
+  names(rngLevels)<-rngLabels
+  setattr(dt[[varnr]], 'class', 'labelled')
+  setattr(dt[[varnr]], 'labels', rngLevels)
+  }
+  }
+  }
+  }
+  for (i in 1:(ncol(dt)))
+  {
+  #cat(paste('i=',i,'\n'))
+  # if(i==80)
+  # {
+  #   browser()
+  # }
+  setLabels(i, dt)
+  }
+}
+
+    # Function reads in variables and forms two table of dictionaries: variablenr->(value->label) for numeric labels, and the same for non-numeric labels.
+    readLabelSheet4<-function(file, varcnt, na.colnames)
+    {
+    colcnt<-varcnt*2+2
+    rngName<-getOption('rng_LabelOrigin')
+    address<-danesurowe::getNamedRange(file, rngName)
+
+    rng<-readSheet(path=address$file, sheet=address$sheetname, skip=0, colcnt=colcnt+1)
+    rng[,(1):=NULL] #Drop first column
+    rng[,(1):=NULL] #Drop LP pair of columns
+    rng[,(1):=NULL] #..
+    rng<-rng[3:nrow(rng),]
+
+    rowcnt <- nrow(rng)
+
+    label_list<-list()
+
+    for(varnr in seq(varcnt))
+    {
+    rngLevels<-rng[[(varnr-1)*2+1]]
+    if (!all(is.na(rngLevels)))
+    {
+    maxNA<-match(TRUE, is.na(rngLevels))
+    if (is.na(maxNA))
+    {
+    maxNA<-rowcnt+1
+    }
+    rngLevels<-rngLevels[1:(maxNA-1)]
+    rngLabels<-rng[[(varnr-1)*2+2]]
+    rngLabels<-rngLabels[1:(maxNA-1)]
+
+    label_list[[as.character(varnr)]]<-list(levels=rngLevels,labels=rngLabels)
+    }
+
+    }
+    names(label_list)<-as.numeric(names(label_list))
+    return(label_list)
+    }
+
+    readLabelSheetNA<-function(file, varcnt)xls_xls_dic.xlsx", #Mapping between column names in web database and the reference database. Information about simple recodings
     onwebduals.dbtemplate="DBTemplate.xlsm", #Reference database. Only structure, no cases.
     onwebduals.als_ctrl_dic="als_ctrl_dic.xlsx" #Dictionary that mapps question names in the control group to question names in the ALS group
   )
@@ -80,6 +205,7 @@ importWebDatabase<-function(filename=NULL, flag_ALSFRS_as_integers=TRUE) {
     savedb(db = dbpp, filename = filename)
   }
   return(dbpp)
+  webdb<-dbpp
 }
 
 #' Recodes ALSFRS into integers
@@ -133,6 +259,8 @@ importXLSDatabases<-function(filename=NULL, path_prefix=NULL) {
 
   joined_db<-joinALS_Ctrl(db_als = db_als, db_ctrl = db_ctrl, als_ctrl_dic)
 
+  als_ctrl_dic_filename<-system.file(getOption('onwebduals.als_ctrl_dic'),package='ONWebDUALSimport')
+  als_ctrl_dic<-getALS_control_dic(als_ctrl_dic_filename)
 
   if(!is.null(filename)) {
     savedb(db = joined_db, filename = filename)
@@ -142,5 +270,63 @@ importXLSDatabases<-function(filename=NULL, path_prefix=NULL) {
 
 
 importAllDatabases<-function(path_prefix=NULL, flag_ALSFRS_as_integers=TRUE) {
+  webdb<-importWebDatabase(flag_ALSFRS_as_integers = flag_ALSFRS_as_integers)
+  xlsdb<-importXLSDatabases()
+  dic_filename<-system.file(getOption('onwebduals.xls2xls_dic'),package='ONWebDUALSimport')
+  dict<-get_dict(dic_filename)
 
+
+  dbtemplate_filename<-system.file(getOption('onwebduals.dbtemplate'),package='ONWebDUALSimport')
+  ref<-read_ref(row_length = nrow(xlsdb), reference_source = dbtemplate_filename, flag_ALSFRS_as_integers=flag_ALSFRS_as_integers)
+
+  ref<-fill_template(in_dt = xlsdb, out_dt = ref, dict = dict)
+  to_delete<-c(colnames(ref)[which(stringr::str_detect(colnames(ref), pattern=stringr::regex('^\\.')))])
+  for(cname in to_delete) {
+    ref[[cname]]<-NULL
+  }
+  ONWebDUALSimport:::compare_dfs(ref, webdb, flag_structure_only = TRUE)
+  q_common<-intersect(ref$q_0, webdb$q_0)
+  db_web<-webdb[!webdb$q_0 %in% q_common,]
+  db<-suppressWarnings(rbind(as_tibble(ref), as_tibble(db_web)))
+
+  db_xls_common<-ref[ref$q_0 %in% q_common,]
+  db_web_common<-webdb[webdb$q_0 %in% q_common,]
+  ONWebDUALSimport:::compare_dfs(db_xls_common, db_web_common, flag_comment_new_rows = FALSE, flag_comment_deleted_rows = FALSE)
+  for(i in seq_along(webdb)) {
+    cat(paste0(i,'\n'))
+    as.character(webdb[[i]])
+  }
+  names(webdb)[[78]]
+  webdb[[78]]
+  ref[[78]]
+  webdb[[91]]
+  sum(duplicated(xlsdb$q_0))
+}
+
+generateNewVariables<-function(db) {
+  db$age_als <-as.numeric(db$q_11 - db$q_5)/365.25
+  db$age_als[db$age_als<0]<-NA
+  setattr(db$age_als, 'label', "Age on 1st symptoms")
+  setattr(db$age_als, 'units', "years")
+
+  db$age <-as.numeric(db$q_4 - db$q_5)/365.25
+  db$age[db$age<20]<-NA
+  db$age[db$age>92]<-NA
+  setattr(db$age, 'label', "Age on consulation")
+  setattr(db$age, 'units', "years")
+
+  db$als_duration <-as.numeric(db$q_4 - db$q_11)/365.25*12
+  db$als_duration[db$als_duration<0]<-NA
+  setattr(db$als_duration, 'label', "Disease duration")
+  setattr(db$als_duration, 'units', "months")
+
+  db$life_span <-as.numeric(db$q_15 - db$q_5)/365.25
+  db$life_span[db$life_span<0]<-NA
+  setattr(db$life_span, 'label', "Life span")
+  setattr(db$life_span, 'units', "years")
+
+  als_start<-which(colnames(db)=='q_51_1.1')
+  als_end<-which(colnames(db)=='q_51_1.12')
+  new_ALS1<-rowSums(db[seq(als_start, als_end)], na.rm=FALSE)
+  db$q_51_1.score[seq_len(nrow(db))]<-new_ALS1
 }

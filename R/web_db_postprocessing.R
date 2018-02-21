@@ -12,10 +12,12 @@ post_processing_for_webdb<-function(dbout) {
 
   neworder<-c('group', setdiff(colnames(dbout), 'group'))
 
+#2  dbout<-data.table(as_tibble(dbout)[neworder])
   data.table::setcolorder(x = dbout, neworder)
 
   # 2. Jeśli pole odpowiedzi w kolumnie 'Relation...' jest puste, to należy zamienić na 'No relation'
-
+#browser()
+#  dbout$q_3a[is.na(dbout$q_3a)]<-'Not related'
   dbout[is.na(dbout$q_3a),q_3a:='Not related']
 
   # 3. Dla kontroli wykasować wszystkie odpowiedzi na pytania od 11 do 72.

@@ -4,7 +4,8 @@
 \alias{read_ref}
 \title{Returns empty reference database that is ready to accept new rows}
 \usage{
-read_ref(row_length = 0, reference_source = NULL)
+read_ref(row_length = 0, reference_source = NULL,
+  flag_ALSFRS_as_integers = TRUE)
 }
 \arguments{
 \item{row_length}{The database may come pre-filled with the

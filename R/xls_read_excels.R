@@ -363,8 +363,20 @@ joinALS_Ctrl<-function(db_als, db_ctrl, als_control_dic) {
   setattr(db_als,'label', 'ALS')
   setattr(db_ctrl,'label', 'Control')
   #	a<-danesurowe::df_difference(db_als, db_ctrl, df1_key='q_0', df2_key='q_0', flag_compare_data=FALSE, return_format = 'md')
-#  browser()
+  #browser()
 
+
+  conflicting_ids<-duplicated(db_ctrl$q_0)
+  if(sum(conflicting_ids)>0){
+    db_ctrl<-db_ctrl[!conflicting_ids,]
+    browser()
+  }
+
+
+  conflicting_ids<-intersect(db_als$q_0, db_ctrl$q_0)
+  if(length(conflicting_ids)>0){
+    db_ctrl$q_0[which(db_ctrl$q_0 %in% conflicting_ids)]<-paste0(conflicting_ids,'_C')
+  }
 
   db<-rbind(db_als, db_ctrl, fill=TRUE)
   db$centr_id<-findid(db$q_0)[,2]

@@ -17,44 +17,48 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
       }
     }
 
-		in_colnames<-dict$in_colname[[i]]
-		if(stringr::str_detect(in_colnames, stringr::fixed(':'))) {
-		  ans<-stringr::str_match(in_colnames, stringr::regex('^(.*):(.*)$') )
+		out_colnames<-dict$out_colname[[i]]
+		if(stringr::str_detect(out_colnames, stringr::fixed(':'))) {
+		  ans<-stringr::str_match(out_colnames, stringr::regex('^(.*):(.*)$') )
 		  var_start<-ans[[2]]
 		  var_end<-ans[[3]]
-		  pos_start<-which(colnames(in_dt)==var_start)
+		  pos_start<-which(colnames(out_dt)==var_start)
 		  if(length(pos_start)!=1) {
 		    browser()
 		  }
-		  pos_end<-which(colnames(in_dt)==var_end)
+		  pos_end<-which(colnames(out_dt)==var_end)
 		  if(length(pos_end)!=1) {
 		    browser()
 		  }
-		  in_colnames<-colnames(in_dt)[seq(pos_start, pos_end)]
+		  out_colnames<-colnames(out_dt)[seq(pos_start, pos_end)]
 		} else {
-		  if(!in_colnames %in% colnames(in_dt)) {
+		  if(!out_colnames %in% colnames(out_dt)) {
 		    browser() #Dodn't find the web_colname in dtall
 		  }
 		}
 
-		#if(colnr>=361) browser()
+		# if(i==85) browser()
 
-    if(is.na(dict$convtype1[[i]])) {
-      flag_cont<-FALSE
-    } else {
-      if(dict$convtype1[[i]]=='cont') {
-        flag_cont<-TRUE
-      } else {
-        flag_cont<-FALSE
-      }
-    }
+		if(i<nrow(dict)) {
+		  if(is.na(dict$convtype1[[i+1]])) {
+		    flag_cont<-FALSE
+		  } else {
+		    if(dict$convtype1[[i+1]]=='cont') {
+		      flag_cont<-TRUE
+		    } else {
+		      flag_cont<-FALSE
+		    }
+		  }
+		}
+
 		if(flag_cont) {
-		  j<-i
-      while(dict$convtype1[[j]]=='cont') {
-        if(! out_colname[[j]] %in% colnames(out_dt)) {
+		  j<-1
+		  in_colnames<-dict$in_colname[[i]]
+      while(dict$convtype1[[j+i]]=='cont') {
+        if(! in_colnames[[j]] %in% colnames(in_dt)) {
           browser()
         }
-        out_colname<-c(out_colname, dict$out_colname[[j]])
+        in_colnames<-c(in_colnames, dict$in_colname[[j+i]])
         if(j<nrow(dict)) {
           j<-j+1
         } else {
@@ -62,14 +66,17 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
           break
         }
       }
-		  next_i<-j-1
+		  next_i<-i+j
 		} else {
-		  out_colnames<-dict$out_colname[[i]]
-		  if(! out_colnames %in% colnames(out_dt)) {
+		  in_colnames<-dict$in_colname[[i]]
+		  if(! in_colnames %in% colnames(in_dt)) {
 		    browser()
 		  }
 		  next_i <- i + 1
 		}
+		# if(identical(out_colnames, 'q_143a')) {
+		#   browser()
+		# }
 
 		cat(paste0("Interpreting row ", i, ": (",
 		           paste0(in_colnames, collapse=', '), ")->(",
@@ -86,7 +93,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 			fun<-eval(parse(text=funname))
 			out_dt<-fun(in_dt, in_colnames, out_dt, out_colnames, par, i>=debug_n)
 			if(i>=debug_n) {
-				browser()
+			  browser()
 			}
 
 			if(!is.na(dict$convtype2[[i]])) {
@@ -106,7 +113,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 
 		} else {
 		  if(length(out_colnames)==1 && length(in_colnames)==1) {
-		    var<-ref_out_dt[[out_colnames]]
+		    var<-in_dt[[in_colnames]]
 		    in_type<-danesurowe::class2vartype_str(class(var))
 		    out_type<-danesurowe::class2vartype_str(class(out_dt[[out_colnames]]))
 		    if(out_type != in_type) {
@@ -115,6 +122,13 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 		      if(type_comb=='SN') {
 		        var2<-as.numeric(stringr::str_replace(stringr::str_replace_all(var, ',', '.'),
 		                                              pattern = stringr::regex('^NA$'), NA_character_))
+		      } else if(type_comb=='FS') {
+		        uvalues<-setdiff(unique(var), c(NA, 'NA'))
+		        a<-setdiff(uvalues, levels(out_dt[[out_colnames]]))
+		        if(length(a)>0) {
+		          browser()
+		        }
+		        var2<-which(var %in% levels(out_dt[[out_colnames]]))
 		      } else if (out_type %in% c('F', 'L')) {
 		        uq<-setdiff(unique(var), NA)
 		        r<-setdiff(uq, c(NA, seq(length(uq))))
@@ -124,14 +138,16 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 		          }
 		        }
 		        var2<-as.integer(var)
+		      } else if (type_comb=='NS') {
+		        var2<-as.character(var)
 		      } else if (out_type %in% c('I')) {
-		        var2<-as.integer(var)
-		      } else {
+		        var2<-suppressWarnings(as.integer(var))
+		      } else   {
 		        browser()
 		      }
 		      var<-var2
 		    }
-		    if(in_type != out_type && !type_comb %in% c('IF', 'NL', 'IL')) {
+		    if(in_type != out_type) {
 		      browser()
 		    } else {
 		      suppressWarnings(set(x = out_dt, i=seq(length.out=nrow(out_dt)), j = out_colnames, value = var))
@@ -157,18 +173,32 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 }
 
 factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug) {
+  # if(out_varname=='group') {
+  #   browser()
+  # }
+  out_varname<-out_varname[[1]]
   var_from<-in_dt[[in_varname]]
   var_target<-out_dt[[out_varname]]
-	dic_from<-sort(unique(as.integer(var_from)))
+  dic_from<-sort(unique(as.integer(var_from)))
 	dic_from_left<-dic_from
 	dic_to<-dic_from
 
-	if('integer' %in% class(var_from) || 'numeric' %in% class(var_from)) {
-		browser()
-	}
+	# if('integer' %in% class(var_from) || 'numeric' %in% class(var_from)) {
+	# 	browser()
+	# }
 
 	if(is.na(pars_in)) {
-	  out_dt[,(out_varname):=as.integer(var_from)]
+	  var_out=var_from
+	  a <- attributes(var_target)
+
+	  if('factor' %in% a$class) {
+	    out_dt[,(out_varname):=as.integer(var_out)]
+	  } else {
+	    out_dt[,(out_varname):=var_out]
+	  }
+	  for(aname in names(a)) {
+	    setattr(out_dt[[out_varname]], aname, a[[aname]])
+	  }
 	  return(out_dt)
 	} else {
 		pars<-stringr::str_split(pars_in, pattern=stringr::fixed(";"))[[1]]
@@ -184,16 +214,16 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 			}
 
 			if(is.na(suppressWarnings(as.numeric(par_to)))) {
-				par_to_value<-danesurowe::LabelToValue(var_target, par_to)
-				if(is.null(par_to_value)) {
-					if(par_to=='NA') {
-						par_to_value<-NA
-					} else {
-						browser()
-					}
-				}
+			  par_to_value<-danesurowe::LabelToValue(var_target, par_to)
+			  if(is.null(par_to_value)) {
+			    if(par_to=='NA') {
+			      par_to_value<-NA
+			    } else {
+			      browser()
+			    }
+			  }
 			} else {
-				par_to_value<-as.numeric(par_to)
+			  par_to_value<-as.numeric(par_to)
 			}
 			if(par_from %in% dic_from){
 				pos<-which(par_from == dic_from)
@@ -244,8 +274,60 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 			var_out[as.integer(var_from)==dic_from[[i]] ]<-dic_to[[i]]
 		}
 	}
-	out_dt[,(out_varname):=var_out]
-#	return(var_out)
+
+	type_str<-paste0(danesurowe::class2vartype(var_from),
+	                 danesurowe::class2vartype(var_target))
+
+	if(type_str == 'FF') {
+	  var_out<-as.integer(var_out)
+	} else if(type_str == 'LL') {
+	  var_out<-as.numeric(var_out)
+	} else if(type_str =='LF') {
+	  xlevels<-danesurowe::GetLevels(var_target, flag_recalculate = FALSE)
+	  xlevels<-xlevels[order(xlevels)]
+	  if(!identical(sort(as.integer(xlevels)), seq_along(xlevels))) {
+	    browser()
+	  } else  {
+	    if(sum(!var_out %in% seq_along(xlevels) & !is.na(var_out) & var_out!=0)>0) {
+	      var_out[!var_out %in% seq_along(xlevels) & !is.na(var_out) & var_out!=0]
+	      browser()
+	    }
+	    var_out[!var_out %in% seq_along(xlevels)]<-NA
+	    var_out<-factor(var_out, levels = xlevels, labels = names(xlevels))
+	  }
+	} else if(type_str == 'FL') {
+	  xlevels<-danesurowe::GetLevels(var_target, flag_recalculate = FALSE, flag_include_NA=TRUE)
+	  var_out<-haven::labelled(x=var_out,labels = xlevels)
+#	  browser()
+	} else if(type_str == 'FI') {
+	  browser()
+	}
+	else if(type_str == 'SF') {
+	  xlevels<-danesurowe::GetLevels(var_target, flag_recalculate = FALSE)
+	  if(length(setdiff(unique(var_out), xlevels))==0) {
+	    var_out<-factor(var_out, levels = xlevels, labels = names(xlevels))
+	  } else if (length(setdiff(unique(var_out), names(xlevels)))==0) {
+	    browser()
+	    var_out<-factor(var_out, levels = names(xlevels))
+	  } else {
+	    browser()
+	  }
+	}	else {
+
+	  browser()
+	}
+	var_out<-danesurowe::copy_obj_attributes(obj_source = var_target, obj_dest = var_out)
+
+  out_dt[,(out_varname):=var_out]
+	# } else {
+	#   out_dt[,(out_varname):=var_out]
+	# }
+	# for(aname in names(a)) {
+	#   setattr(out_dt[[out_varname]], aname, a[[aname]])
+	# }
+
+#	out_dt<-danesurowe::copy_var_attributes(var_source = var_from, dt_dest = out_dt, var_dest_name = out_varname)
+	#	return(var_out)
 	return(out_dt)
 }
 
@@ -253,7 +335,10 @@ yesno_by_integer<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_d
   var_from<-in_dt[[in_varname]]
 #  var_target<-out_dt[[out_varname]]
 
-  out_dt[,(out_varname):=as.integer(var_from+1)]
+  var_out<-as.integer(var_from+1)
+  var_target<-out_dt[[out_varname]]
+  var_out<-danesurowe::copy_obj_attributes(obj_source = var_target, obj_dest = var_out, force_include_cols = 'levels')
+  out_dt[,(out_varname):=var_out]
   #	return(var_out)
   return(out_dt)
 }
@@ -263,7 +348,10 @@ Date_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debu
   var_from<-in_dt[[in_varname]]
   var_target<-out_dt[[out_varname]]
   dt<-lubridate::parse_date_time(var_from, 'Y!m!*dH!M!S!z!*')
-  out_dt[,(out_varname):=as.Date(round(dt, 'day'))]
+  var_out<-as.Date(round(dt, 'day'))
+  var_out<-danesurowe::copy_obj_attributes(obj_source = var_target, obj_dest = var_out)
+  out_dt[,(out_varname):=var_out]
+
   #	return(var_out)
   return(out_dt)
 

@@ -54,7 +54,7 @@ compare_dfs<-function(df1_path, df2_path,
 
   ans<-danesurowe::df_difference(df1=df1, df2=df2, df1_key = 'q_0', df2_key = 'q_0',
                                  columns_to_ignore = c('filename','lp'),
-                                 return_format = 'md',
+                                 return_format = 'md', attributes_to_ignore_in_structure = 'validations',
                                  flag_compare_data = !flag_structure_only,
                                  flag_comment_new_rows = flag_comment_new_rows,
                                  flag_comment_deleted_rows = flag_comment_deleted_rows,
