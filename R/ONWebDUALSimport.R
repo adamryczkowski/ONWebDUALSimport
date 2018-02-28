@@ -247,7 +247,7 @@ savedb<-function(db, filename) {
 #'        file with the given name
 #' @return Returns data.table version of the database.
 #' @export
-importXLSDatabases<-function(filename=NULL, path_prefix=NULL) {
+importXLSDatabases<-function(filename=NULL, path_prefix=NULL, flag_ALSFRS_as_integers=TRUE) {
   if(is.null(path_prefix)) {
     path_prefix<-'Excel'
   }
@@ -262,16 +262,24 @@ importXLSDatabases<-function(filename=NULL, path_prefix=NULL) {
   als_ctrl_dic_filename<-system.file(getOption('onwebduals.als_ctrl_dic'),package='ONWebDUALSimport')
   als_ctrl_dic<-getALS_control_dic(als_ctrl_dic_filename)
 
-  if(!is.null(filename)) {
-    savedb(db = joined_db, filename = filename)
+  # If required, transcode ALSFRS into integers (instead of labelled data)
+  if(flag_ALSFRS_as_integers) {
+    dbout<-recode_ALSFRS(joined_db)
+  } else {
+    dbout<-data.table::copy(joined_db)
   }
-  return(joined_db)
+
+
+  if(!is.null(filename)) {
+    savedb(db = dbout, filename = filename)
+  }
+  return(dbout)
 }
 
 
 importAllDatabases<-function(path_prefix=NULL, flag_ALSFRS_as_integers=TRUE) {
   webdb<-importWebDatabase(flag_ALSFRS_as_integers = flag_ALSFRS_as_integers)
-  xlsdb<-importXLSDatabases()
+  xlsdb<-importXLSDatabases(flag_ALSFRS_as_integers = flag_ALSFRS_as_integers)
   dic_filename<-system.file(getOption('onwebduals.xls2xls_dic'),package='ONWebDUALSimport')
   dict<-get_dict(dic_filename)
 

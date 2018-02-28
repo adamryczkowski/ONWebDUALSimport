@@ -95,11 +95,22 @@ library('ONWebDUALSimport')
 To get the Excel version of the web database, enter the following command:
 
 ```
-webdb<-importWebDatabase(filename='webdb.xlsx')
+webdb<-importWebDatabase(flag_ALSFRS_as_integers=TRUE)
 ```
 
-To get the Excel version of the Excel database, enter the following command. Make sure that under the `/home/user/ALS/inputdb` you have the correct directory structure. Otherwise the script will not find the files.
+Parameter `flag_ALSFRS_as_integers` determines whether we prefer results from the ALSFRS to be encoded as labelled factor variables, or simple integers - more suitable for numeric computations.
+
+To get the Excel version of the Excel database, enter the following command. Make sure that under the `/home/user/ALS/inputdb` you have the correct directory structure. Otherwise the script will not find the files and will report an error.
 
 ```
-xlsdb<-importXLSDatabases(filename='xlsdb.xslx', path_prefix='/home/user/ALS/inputdb')
+xlsdb<-importXLSDatabases(path_prefix='/home/user/ALS/inputdb', flag_ALSFRS_as_integers=TRUE)
 ```
+
+If one wish to get both Excel and web questionnaires together in one database, use the following function:
+
+```
+alldb<-importAllDatabases(path_prefix='/home/user/ALS/inputdb', flag_ALSFRS_as_integers=TRUE)
+
+```
+
+At the moment of writing (20th of February 2018) the `importAllDatabases()` doesn't merge all the questions yet, and may contain some debugging code. 
