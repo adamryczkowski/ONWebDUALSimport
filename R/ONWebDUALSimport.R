@@ -329,4 +329,5 @@ generateNewVariables<-function(db) {
   als_end<-which(colnames(db)=='q_51_1.12')
   new_ALS1<-rowSums(db[seq(als_start, als_end)], na.rm=FALSE)
   db$q_51_1.score[seq_len(nrow(db))]<-new_ALS1
+  db$q_51_1.rate[seq_len(nrow(db))]<-(48-db$q_51_1.score)/db$als_duration
 }
