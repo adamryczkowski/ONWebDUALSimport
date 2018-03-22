@@ -5,6 +5,40 @@ children<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug) {
 
 pattern_of_spreading<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug) {
   #Do nothing
+#  browser()
+  vals<-as.character(in_dt[[in_colnames]])
+  sufixes<-stringr::str_sub(vals, nchar(vals))
+  prefixes<-stringr::str_sub(vals, 1, nchar(vals)-1)
+  dict<-c('1', '2', '2a', '2b', '3', '3a', '3b', '4', '4a', '4b', '5', '5a', '5b', '6', '7', '8', '9')
+  #1="1>";2="1/";3="2>";4="2/";5="2a>";6="2a/";7="2b>";8="2b/";9="3>";10="3/";11="3a>";
+  #12="3a/";13="3b>";14="3b/";15="4>";16="4/";17="4a>";18="4a/";19="4b>";20="4b/";21="5>";
+  #22="5/";23="5a>";24="5a/";25="5b>";26="5b/";27="6>";28="6/";29="7>";30="7/";31="8>";32="8/";33="9>";34="9/"
+  valr<-map_int(prefixes, function(prefix) {
+    pos<-which(dict %in% prefix)
+    if(length(pos)==0) {
+      return(NA_integer_)
+    } else {
+      pos
+    }
+  })
+  if(length(out_colnames)==1) {
+    out_col_r=out_colnames
+    out_col_t=NA
+  } else {
+    out_col_r=out_colnames[[1]]
+    out_col_t=out_colnames[[2]]
+  }
+  if(!is.na(out_col_r)) {
+    v<-out_dt[[out_col_r]]
+    attributes(valr)<-attributes(v)
+    out_dt[,(out_col_r):=valr]
+  }
+  if(!is.na(out_col_t)) {
+    valr<-as.integer(factor(sufixes))
+    v<-out_dt[[out_col_t]]
+    attributes(valr)<-attributes(v)
+    out_dt[,(out_col_r):=valr]
+  }
   out_dt
 }
 
@@ -48,6 +82,40 @@ birth_order<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug) 
 sport_activity<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug) {
   #Do nothing
   out_dt
+}
+
+all_units=list(
+  'µkat/l'=list(
+    'U/l'=list(inref=16.67*10^(-9),
+               synonims=c('U/L')),
+    'µmol/l·s'=list(inref=1,
+                    synonims=c('µmol/l*s', 'ukat/l' ))
+  ),
+  'mg/dl'=list(
+    'mg/dl'=list(inref=1, synonims=character(0))))
+
+get_units_conv<-function(all_units) {
+  df=tibble(ref_unit=character(0), synonim=character(0), syninref=character(0))
+  all_units
+}
+
+units<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug) {
+  units_col<-out_colnames[[length(out_colnames)]]
+  expected_units<-names(danesurowe::GetLevels(out_dt[[units_col]], flag_recalculate = FALSE))
+  units_col<-in_colnames[[length(in_colnames)]]
+
+  encountered_units<-unique(in_dt[[units_col]])
+
+  conv<-list(
+
+  )
+
+  dict<-list(
+    'U/L'=list(unit='U/l', factor=1),
+
+  )
+
+  browser()
 }
 
 manual_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug) {

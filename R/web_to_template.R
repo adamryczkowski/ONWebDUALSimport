@@ -85,6 +85,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 
 		if(!is.na(dict$convtype1[[i]])) {
 			funname<-dict$convtype1[[i]]
+			#if(funname=='pattern_of_spreading') browser()
 			par<-dict$par1[[i]]
 			if(i>=debug_n) {
 				browser()
