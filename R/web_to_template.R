@@ -2,6 +2,7 @@
 
 #Loads the template with the database read from the web, using the web_xls_dic.xlsx dictionary
 fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
+  reportClass<-ReportClass$new()
 	options(warn=2)
 
   ref_out_dt<-data.table::copy(out_dt) #Copy for the reference
@@ -92,7 +93,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 			}
 
 			fun<-eval(parse(text=funname))
-			out_dt<-fun(in_dt, in_colnames, out_dt, out_colnames, par, i>=debug_n)
+			out_dt<-fun(in_dt, in_colnames, out_dt, out_colnames, par, i>=debug_n, reportClass)
 			if(i>=debug_n) {
 			  browser()
 			}
@@ -106,7 +107,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 			  }
 
 			  fun<-eval(parse(text=funname))
-			  out_dt<-fun(in_dt, in_colnames, out_dt, out_colnames, par, i>=debug_n)
+			  out_dt<-fun(in_dt, in_colnames, out_dt, out_colnames, par, i>=debug_n, reportClass)
 			  if(i>=debug_n) {
 			    browser()
 			  }
@@ -173,7 +174,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 	return(out_dt)
 }
 
-factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug) {
+factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug, reportClass) {
   # if(out_varname=='group') {
   #   browser()
   # }
@@ -332,7 +333,8 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 	return(out_dt)
 }
 
-yesno_by_integer<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug) {
+yesno_by_integer<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug, reportClass) {
+  browser()
   var_from<-in_dt[[in_varname]]
 #  var_target<-out_dt[[out_varname]]
 
@@ -345,7 +347,8 @@ yesno_by_integer<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_d
 }
 
 
-Date_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug) {
+Date_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug, reportClass) {
+  browser()
   var_from<-in_dt[[in_varname]]
   var_target<-out_dt[[out_varname]]
   dt<-lubridate::parse_date_time(var_from, 'Y!m!*dH!M!S!z!*')
