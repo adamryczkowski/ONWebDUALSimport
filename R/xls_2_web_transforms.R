@@ -1,5 +1,12 @@
 children<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
-  #Do nothing
+  vals<-as.character(in_dt[[in_colnames]])
+  vals[vals=='No']<-0
+  vals_out<-conv_to_numeric(var_in = vals, var_name = in_colnames, reportClass = reportClass, type='children_numeric', additional_nas='NA')
+
+  vals_out<-upper_bound_numeric(var_in = vals_out, var_name = in_colnames, reportClass = reportClass, type = 'children_upper_bound')
+
+  attributes(vals_out)<-attributes(out_dt[[out_colnames]])
+  out_dt[,(out_colnames):=vals_out]
   out_dt
 }
 
@@ -43,24 +50,336 @@ pattern_of_spreading<-function(in_dt, in_colnames, out_dt, out_colnames, par,  d
 }
 
 multiple_variants<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
-  #Do nothing
+  if(length(out_colnames)==1) {
+    browser()
+  }
+  levels<-danesurowe::GetLevels(out_dt[[out_colnames[[1]] ]], flag_recalculate = FALSE)
+
+  for(in_colname in in_colnames) {
+    val_in<-as.integer(in_dt[[in_colname]])
+    levs<-seq(min(val_in, na.rm=TRUE), max(val_in, na.rm = TRUE))
+    if(length(levs)>length(out_colnames)) {
+      browser() #Too many levels
+    }
+    for(i in seq_along(levs)) {
+      outval<-out_dt[[out_colnames[[i]] ]]
+      lev<-levs[[i]]
+      if('factor' %in% class(outval)) {
+        new_levels<-danesurowe::GetLevels(outval, flag_recalculate = FALSE)
+        assertthat::are_equal(levels, new_levels)
+        outval[val_in==lev]<-names(levels)[[2]]
+        outval[val_in!=lev & is.na(outval)]<-names(levels)[[1]]
+        out_dt[,(out_colnames[[i]]):=outval]
+      } else {
+        browser()
+      }
+    }
+  }
+
   out_dt
 }
 
 to_report<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+  for(in_colname in in_colnames) {
+    in_val<-as.character(in_dt[[in_colname]])
+    reportClass$add_element(type = 'to_report', case = which(is.na(in_val)), var = in_colname)
+  }
   #Do nothing
   out_dt
 }
 
 
 manual_text<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
-  #Do nothing
-  out_dt
+  if(length(in_colnames)>1) {
+    browser()
+  }
+  if(length(out_colnames)>1) {
+    browser()
+  }
+  in_val<-in_dt[[in_colnames]]
+  in_val[in_val=='NA']<-NA
+  uvals<-setdiff(unique(in_val), NA)
+
+  out_val<-out_dt[[out_colnames]]
+  if('factor' %in% class(out_val)) {
+    labels<-danesurowe::GetLevels(out_val, flag_recalculate = FALSE)
+    not_matched<-uvals[!uvals %in% names(labels)]
+    matched<-uvals[uvals %in% names(labels)]
+    for(m in matched) {
+      out_val[in_val==m]<-m
+    }
+    for(m in not_matched) {
+      reportClass$add_element(type='manual_text', case=which(in_val==m), var = in_colnames)
+    }
+  } else {
+    broswe()
+  }
+  out_dt[,(out_colnames):=out_val]
 }
 
+#Converts set of input columns into an equivalent but different format that mimics a nested table in relation one-to-many.
+#
+#Suppose the nested table has 7 rows with id A, B, C, D, E, F and G and two columns: Value1 and Value2.
+#
+#in_colnames_one_cat_array:
+#Value1_A Value1_B  Value1_C Value1_D
+#Value2_A Value2_B  Value2_C Value2_D
+#
+#in_colnames_other_cat:
+#Cat1 Cat2
+#
+#in_colnames_value_array:
+#Value1_Cat1 Value1_Cat2
+#Value2_Cat1 Value2_Cat2
+#
+#out_factor is a character vector: LETTERS[1:7]
+#
+#Nested table doesn't have to have any value columns. In this case existance will be preserved.
+#
+#This function assumes there are no values in the nested table. Only existence.
+convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_one_cat_factor, in_colnames_other_cat=character(0),
+                                        out_dt=NULL, out_factor, out_colnames, reportClass, cat_dup_type='wide2narrow', bad_cat_type='bad_category',
+                                        factor_dic=list()) {
+  # in_dt=data.table::data.table(Value_B=c(0,0,0,1,0,1,1,1,0,0,0,0), Value_A1=c(1,1,1,1, 1,1,1,1, 1,1,1,1), Value_A2=c(0,1,0,0, NA,NA,NA,NA, NA,NA,NA,NA),
+  #                              Other1=c(1,NA,NA,NA, 2,NA,NA,NA, 3,3,1,2), Other2=c(NA,1,NA,NA, 2,NA,NA,NA, 1,2,3,4))
+  # in_colnames_one_cat<-c('Value_B', 'Value_A1', 'Value_A2')
+  # in_colnames_one_cat_factor<-c('B', 'A', 'A')
+  # in_colnames_other_cat<-c('Other1', 'Other2')
+  # out_factor=LETTERS[1:5]
+  # out_colnames=as.character(t(matrix(c(paste0('OutCat', 1:5), paste0('OutVal', 1:5)), c(5,2))))
+  #
+  # reportClass<-ReportClass$new()
+  # cat_dup_type<-'wide2narrow'
+
+
+  checkmate::assertClass(in_dt, 'data.frame')
+
+  checkmate::assertCharacter(in_colnames_one_cat)
+  checkmate::assertSubset(in_colnames_one_cat, colnames(in_dt))
+
+  checkmate::assertCharacter(in_colnames_other_cat)
+  checkmate::assertSubset(in_colnames_other_cat, colnames(in_dt))
+
+  #checkmate::assertCharacter(in_colnames_one_cat_factor, unique=TRUE)
+  checkmate::assertTRUE(length(in_colnames_one_cat)==length(in_colnames_one_cat_factor))
+
+  checkmate::assertCharacter(out_factor, unique = TRUE)
+  checkmate::assertSubset(in_colnames_one_cat_factor, out_factor)
+
+  checkmate::assertCharacter(out_colnames)
+  if(length(out_factor)!=length(out_colnames)) {
+    #checkmate::assertTRUE(2*length(out_factor)==length(out_colnames))
+
+    out_colnames<-matrix(out_colnames, c(2,length(out_colnames)/2))
+    out_valnames<-out_colnames[2,]
+    out_colnames<-out_colnames[1,]
+  } else {
+    out_valnames<-character(0)
+  }
+
+
+  #Initialize the database. First we initialize with the wide format, with a dedicated column to each level
+  out_dt_tmp<-data.table::data.table(.to.delete=seq_len(nrow(in_dt)))
+  out_dt_tmp[,(paste0('var_',out_factor)):=0L]
+  data.table::set(out_dt_tmp, NULL, '.to.delete',NULL)
+
+  #First we fill all the dedicated factors
+  for(i in seq_along(unique(in_colnames_one_cat_factor))) {
+    one_factor<-in_colnames_one_cat_factor[[i]]
+    one_cat_factor_poses<-which(in_colnames_one_cat_factor == one_factor)
+    out_pos<-which(one_factor == out_factor)
+    out_var<-paste0('var_', one_factor)
+    val_var<-na.replace(out_dt_tmp[[out_var]])
+    for(one_cat_factor_pos in one_cat_factor_poses) {
+      one_cat_colname<-in_colnames_one_cat[[one_cat_factor_pos]]
+      one_cat_factor<-in_colnames_one_cat_factor[[one_cat_factor_pos]]
+      in_val<-in_dt[[one_cat_colname]]
+      if('factor' %in% class(in_val)) {
+        flevels<-danesurowe::GetLevels(in_val, flag_recalculate = FALSE)
+        if(length(intersect(c('Yes', 'No'), names(flevels)))==2) {
+          tmp<-integer(nrow(in_dt))
+          tmp[in_val=='Yes']<-1
+        } else {
+          browser()
+        }
+        in_val<-tmp
+      }
+      val_var<-na.replace(in_val) + val_var
+      data.table::set(out_dt_tmp,NULL, out_var, val_var)
+    }
+  }
+
+  #Then we fill all the "other" columns
+  browser()
+  for(i in seq_along(in_colnames_other_cat)) {
+    cat(paste0('i=', i, '\n'))
+    in_colname<-in_colnames_other_cat[[i]]
+    many_factors<-in_dt[[in_colname]]
+    if('numeric' %in% class(many_factors) || 'integer' %in% class(many_factors) ) {
+      many_factors<-factor(many_factors, levels=seq_along(out_factor), labels=out_factor)
+    }
+    many_factors<-as.character(many_factors)
+    err_records<-which(many_factors %in% in_colnames_one_cat_factor )
+    #Each element of err_records points to a case, when a duplicate entry exists in the dedicated columns part of the dt
+    for(err_record in err_records) {
+      one_factor<-many_factors[[err_record]]
+      one_cat_factor_poses<-which(in_colnames_one_cat_factor == one_factor)
+      for(one_cat_factor_pos in one_cat_factor_poses) {
+        dup_column<-in_colnames_one_cat[[one_cat_factor_pos]]
+        reportClass$add_element(type = cat_dup_type, case = err_record, var = in_colname, par1 = dup_column)
+      }
+    }
+    many_factors[err_records]<-NA_character_
+    many_factors[many_factors=='NA']<-NA_character_
+    non_empties<-which(!is.na(many_factors))
+    for(non_empty_row in non_empties) {
+      cat(paste0('non_empty_nr=',non_empty_row, '\n'))
+      one_factor<-many_factors[[non_empty_row]]
+      one_cat_factor_pos<-which(tolower(out_factor) == tolower(one_factor))
+      if(length(one_cat_factor_pos)==0) {
+        translated_name<-factor_dic[tolower(one_factor)]
+        if(is.null(translated_name[[1]])) {
+          browser()
+          one_cat_factor_pos<-NA
+        } else if (is.na(translated_name[[1]])) {
+          one_cat_factor_pos<-NA
+        } else if ( translated_name[[1]]=='!') {
+          reportClass$add_element(type = bad_cat_type, case = non_empty_row, var = in_colname, par1=NA)
+          one_cat_factor_pos<-NA
+        } else {
+          one_cat_factor_pos<-which(tolower(out_factor) == tolower(translated_name[[1]]))
+        }
+      }
+      if(!is.na(one_cat_factor_pos)) {
+        one_factor<-out_factor[[one_cat_factor_pos]]
+        target_column<-paste0('var_', one_factor)
+
+        if(out_dt_tmp[[target_column]][[non_empty_row]]==1) {
+          reportClass$add_element(type = cat_dup_type, case = non_empty_row, var = in_colname)
+        } else {
+          data.table::set(out_dt_tmp, non_empty_row, target_column, 1L)
+        }
+      }
+    }
+  }
+
+  #Now it is a time to convert this wide format into a narrow
+  colnames(out_dt_tmp)<-out_factor
+  out_dt_tmp<-data.matrix(out_dt_tmp)
+  out_dt_list<-plyr::alply(out_dt_tmp, 1, function(x) which(x>0))
+
+  if(is.null(out_dt)) {
+    out_dt_tmp<-data.table::data.table(.to.delete=seq_len(nrow(in_dt)))
+    if(length(out_valnames)==0) {
+      out_dt_tmp[,(out_colnames):=factor(rep(NA, nrow(in_dt)), levels = out_factor)]
+    } else {
+      for(i in seq_along(out_colnames)) {
+        out_dt_tmp[,(out_colnames[[i]]):=factor(rep(NA, nrow(in_dt)), levels = out_factor)]
+        out_dt_tmp[,(out_valnames[[i]]):=0L]
+      }
+    }
+    data.table::set(out_dt_tmp, NULL, '.to.delete',NULL)
+  }
+  for(rownr in as.integer(seq_along(out_dt_list))) {
+    l<-out_dt_list[[rownr]]
+    for(col_nr in as.integer(seq_along(l))) {
+      factor_id<-names(l)[[col_nr]]
+      factor_nr<-which(out_factor==factor_id)
+      data.table::set(out_dt_tmp, rownr, out_colnames[[col_nr]], factor_id)
+      if(length(out_valnames)==0) {
+        if(l[[col_nr]]>1) {
+          reportClass$add_element(type = cat_dup_type, case = rownr)
+        }
+      } else {
+        data.table::set(out_dt_tmp, rownr, out_valnames[[col_nr]], l[[col_nr]])
+      }
+    }
+  }
+
+  for(cn in colnames(out_dt_tmp)) {
+    v<-out_dt[[cn]]
+    set(out_dt, NULL, cn, out_dt_tmp[[cn]])
+    out_dt<-danesurowe::copy_var_attributes(v, cn, out_dt)
+  }
+  return(out_dt)
+}
+
+convert_wide_to_narrow<-function(in_dt, in_colnames_one_cat_array, in_colnames_other_cat=character(0), in_colnames_value_array=character(0), out_factor) {
+  checkmate::assertClass(in_dt, 'data.frame')
+
+  checkmate::assertCharacter(in_colnames_one_cat_array)
+  checkmate::assertSubset(in_colnames_one_cat_array, colnames(in_dt))
+
+  checkmate::assertCharacter(in_colnames_other_cat)
+  checkmate::assertSubset(in_colnames_other_cat, colnames(in_dt))
+
+  checkmate::assertCharacter(in_colnames_value_array)
+  checkmate::assertSubset(in_colnames_value_array, colnames(in_dt))
+  if(is.null(dim(in_colnames_one_cat_array))) {
+    dim(in_colnames_one_cat_array)<-c(1,length(in_colnames_one_cat_array))
+  }
+
+  if(nrow(in_colnames_one_cat_array)>1) {
+    flag_has_values=TRUE
+  } else {
+    flag_has_values=FALSE
+  }
+
+  checkmate::assertCharacter(out_factor)
+  checkmate::assertTRUE(ncol(in_colnames_one_cat_array)==length(out_factor))
+
+}
 
 disease_in_family<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
-  #Do nothing
+  #TODO:
+  #Zrób oddzielną funkcję, która zbiera odpowiedzi będące podformularzem z kolumną określającą id członka rodziny
+  #oraz kolumnami wartości na postać płaską, w której wartości są dla kolejnych, z góry określonych
+  #poziomów, oraz kilka wartości "inne" wg. starego planu.
+  #
+  #Wywołaj tą funkcję stąd.
+  #
+  #Funkcja musi przyjmować rekordy w formacie (id kol. z id członka rodziny, id kol. z wartościami).
+  #
+  # Wejście:
+  # 1. wektor kolumn, gdzie każda dotyczy cechy w jednej z kategorii
+  # 2. Wektor nazw factora odpowiadająca tym kategoriom
+  # 3. Wektor kolumn z nazwami innych kategorii (factor/character)
+  # 4. Wektor z cechami z tych innych kategorii
+
+  convert_wide_to_narrow_simple(in_dt = in_dt, in_colnames_one_cat = in_colnames[2:7],
+                                in_colnames_other_cat = in_colnames[seq(8, length(in_colnames))], reportClass = reportClass,
+                                in_colnames_one_cat_factor = c('Mother', 'Father', 'Brother', 'Homozygous twin', 'Sister', 'Homozygous twin'),
+                                out_dt = out_dt, out_factor = names(danesurowe::GetLevels(out_dt$q_100a_1)), out_colnames = out_colnames,
+                                factor_dic=list('uncle'='Uncle unknown line', 'yes'='!', 'no'='!', 'yes, sister'='Sister',
+                                                'uncle (brother of father)'='Uncle paternal',
+                                                'grandmother (questionable )'='Grandmother unknown line',
+                                                'maybe great-grandmother?'='Grandmother unknown line',
+                                                'uncle (mother´s brother)'='Uncle paternal',
+                                                'grandmother'='Grandmother unknown line',
+                                                'second cousin'='!',
+                                                'uncle father side'='Uncle paternal',
+                                                'maternal grandmother'='Grandmother maternal',
+                                                'Aunt father side'='Aunt  paternal',
+                                                'aunt'='Aunt unknown line',
+                                                'grandfather'='Grandfather unknown line',
+                                                'grandmother'='Grandmother unknown line',
+                                                'niece'='Niece unknown line',
+                                                'dsughter'='Daughter',
+                                                'grandaunt'='Aunt unknown line',
+                                                'cousin'='!',
+                                                'aunt'='Aunt unknown line'))
+  if(length(in_colnames)!=10) {
+    browser()
+  }
+  if(length(out_colnames)!=8) {
+    browser()
+  }
+  in_val<-in_dt[[in_colnames]]
+  in_val[in_val=='NA']<-NA
+  uvals<-setdiff(unique(in_val), NA)
+
+  out_val<-out_dt[[out_colnames]]
+  browser()
   out_dt
 }
 
@@ -225,8 +544,8 @@ specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, r
   out_dt
 }
 
-to_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug) {
-  browser()
+to_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+#  browser()
   # if(out_colnames=='q_51_1.rate') {
   #   browser()
   # }
@@ -348,6 +667,15 @@ conv_to_numeric<-function(var_in, var_name, reportClass, type, additional_nas=ch
   return(var_out)
 }
 
+upper_bound_numeric<-function(var_in, var_name, reportClass, type, upper_bound) {
+  upper_exceed<-which(var_in>upper_bound)
+  for(val_exceed in upper_exceed) {
+    reportClass$add_element(type = type, case = val_exceed, var = var_name)
+  }
+  var_in[upper_exceed]<-NA
+  return(var_in)
+}
+
 to_numeric<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
   # if(out_colnames=='q_51_1.rate') {
   #   browser()
@@ -406,3 +734,4 @@ Date_by_serial<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debu
   return(out_dt)
 
 }
+
