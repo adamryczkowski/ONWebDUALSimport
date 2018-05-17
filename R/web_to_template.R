@@ -34,11 +34,11 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 		  out_colnames<-colnames(out_dt)[seq(pos_start, pos_end)]
 		} else {
 		  if(!out_colnames %in% colnames(out_dt)) {
-		    browser() #Dodn't find the web_colname in dtall
+		    browser() #Didn't find the web_colname in dtall
 		  }
 		}
 
-		# if(i==85) browser()
+#		if(i==529) browser()
 
 		if(i<nrow(dict)) {
 		  if(is.na(dict$convtype1[[i+1]])) {

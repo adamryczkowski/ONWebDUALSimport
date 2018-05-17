@@ -3,7 +3,7 @@ children<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, rep
   vals[vals=='No']<-0
   vals_out<-conv_to_numeric(var_in = vals, var_name = in_colnames, reportClass = reportClass, type='children_numeric', additional_nas='NA')
 
-  vals_out<-upper_bound_numeric(var_in = vals_out, var_name = in_colnames, reportClass = reportClass, type = 'children_upper_bound')
+  vals_out<-upper_bound_numeric(var_in = vals_out, var_name = in_colnames, reportClass = reportClass, type = 'children_upper_bound', upper_bound = 20)
 
   attributes(vals_out)<-attributes(out_dt[[out_colnames]])
   out_dt[,(out_colnames):=vals_out]
@@ -88,33 +88,55 @@ to_report<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, re
   out_dt
 }
 
+parse_char_as_list<-function(pars_in) {
+  pars<-stringr::str_split(pars_in, pattern=stringr::fixed(";"))[[1]]
+  keys<-character(length(pars))
+  values<-rep(list(list()),length(pars))
+  for(i in seq_along(pars)) {
+    par<-pars[[i]]
+    m<-stringr::str_match(par, pattern=stringr::regex('^(.*)->(.*)$'))
+    if(length(m)!=3) {
+      browser()
+    }
+    key<-m[[2]]
+    value<-m[[3]]
+    flag_report<-FALSE
+    if(stringr::str_sub(value,1,1)=='!') {
+      value<-stringr::str_sub(value,2)
+      flag_report<-TRUE
+    }
+    if(value=='NA' || value=='') {
+      value<-NA
+    }
+    keys[[i]]<-key
+    values[[i]]<-list(value, flag_report)
+  }
+  ans<-setNames(values,keys)
+  return(ans)
+}
 
-manual_text<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+manual_text<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass, type='manual_text') {
   if(length(in_colnames)>1) {
     browser()
   }
   if(length(out_colnames)>1) {
     browser()
   }
+  #browser()
   in_val<-in_dt[[in_colnames]]
-  in_val[in_val=='NA']<-NA
-  uvals<-setdiff(unique(in_val), NA)
-
   out_val<-out_dt[[out_colnames]]
-  if('factor' %in% class(out_val)) {
-    labels<-danesurowe::GetLevels(out_val, flag_recalculate = FALSE)
-    not_matched<-uvals[!uvals %in% names(labels)]
-    matched<-uvals[uvals %in% names(labels)]
-    for(m in matched) {
-      out_val[in_val==m]<-m
-    }
-    for(m in not_matched) {
-      reportClass$add_element(type='manual_text', case=which(in_val==m), var = in_colnames)
-    }
+
+#  if(in_colnames=='q_153') browser()
+  if(!is.na(par)) {
+    par_l<-parse_char_as_list(par)
   } else {
-    broswe()
+    par_l<-list()
   }
-  out_dt[,(out_colnames):=out_val]
+
+  out_val<-convert_manual_text(in_char=in_val, colname=in_colnames, out_factor=out_val, factor_dict=par_l, reportClass, type=type)
+
+  data.table::set(out_dt,NULL,out_colnames, out_val)
+  out_dt
 }
 
 #Converts set of input columns into an equivalent but different format that mimics a nested table in relation one-to-many.
@@ -210,9 +232,8 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
   }
 
   #Then we fill all the "other" columns
-  browser()
   for(i in seq_along(in_colnames_other_cat)) {
-    cat(paste0('i=', i, '\n'))
+#    cat(paste0('i=', i, '\n'))
     in_colname<-in_colnames_other_cat[[i]]
     many_factors<-in_dt[[in_colname]]
     if('numeric' %in% class(many_factors) || 'integer' %in% class(many_factors) ) {
@@ -233,10 +254,15 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
     many_factors[many_factors=='NA']<-NA_character_
     non_empties<-which(!is.na(many_factors))
     for(non_empty_row in non_empties) {
-      cat(paste0('non_empty_nr=',non_empty_row, '\n'))
+#      if(i==3 && non_empty_row==606) browser()
+#      cat(paste0('non_empty_nr=',non_empty_row, '\n'))
+      value=1L
       one_factor<-many_factors[[non_empty_row]]
       one_cat_factor_pos<-which(tolower(out_factor) == tolower(one_factor))
       if(length(one_cat_factor_pos)==0) {
+        if(one_factor=='five aunts') {
+          value=5L
+        }
         translated_name<-factor_dic[tolower(one_factor)]
         if(is.null(translated_name[[1]])) {
           browser()
@@ -250,6 +276,7 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
           one_cat_factor_pos<-which(tolower(out_factor) == tolower(translated_name[[1]]))
         }
       }
+      if(length(one_cat_factor_pos)==0) browser()
       if(!is.na(one_cat_factor_pos)) {
         one_factor<-out_factor[[one_cat_factor_pos]]
         target_column<-paste0('var_', one_factor)
@@ -257,29 +284,27 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
         if(out_dt_tmp[[target_column]][[non_empty_row]]==1) {
           reportClass$add_element(type = cat_dup_type, case = non_empty_row, var = in_colname)
         } else {
-          data.table::set(out_dt_tmp, non_empty_row, target_column, 1L)
+          data.table::set(out_dt_tmp, non_empty_row, target_column, value)
         }
       }
     }
   }
-
   #Now it is a time to convert this wide format into a narrow
   colnames(out_dt_tmp)<-out_factor
   out_dt_tmp<-data.matrix(out_dt_tmp)
   out_dt_list<-plyr::alply(out_dt_tmp, 1, function(x) which(x>0))
 
-  if(is.null(out_dt)) {
-    out_dt_tmp<-data.table::data.table(.to.delete=seq_len(nrow(in_dt)))
-    if(length(out_valnames)==0) {
-      out_dt_tmp[,(out_colnames):=factor(rep(NA, nrow(in_dt)), levels = out_factor)]
-    } else {
-      for(i in seq_along(out_colnames)) {
-        out_dt_tmp[,(out_colnames[[i]]):=factor(rep(NA, nrow(in_dt)), levels = out_factor)]
-        out_dt_tmp[,(out_valnames[[i]]):=0L]
-      }
+  out_dt_tmp<-data.table::data.table(.to.delete=seq_len(nrow(in_dt)))
+  if(length(out_valnames)==0) {
+    out_dt_tmp[,(out_colnames):=factor(rep(NA, nrow(in_dt)), levels = out_factor)]
+  } else {
+    for(i in seq_along(out_colnames)) {
+      out_dt_tmp[,(out_colnames[[i]]):=factor(rep(NA, nrow(in_dt)), levels = out_factor)]
+      out_dt_tmp[,(out_valnames[[i]]):=0L]
     }
-    data.table::set(out_dt_tmp, NULL, '.to.delete',NULL)
   }
+  data.table::set(out_dt_tmp, NULL, '.to.delete',NULL)
+
   for(rownr in as.integer(seq_along(out_dt_list))) {
     l<-out_dt_list[[rownr]]
     for(col_nr in as.integer(seq_along(l))) {
@@ -330,56 +355,116 @@ convert_wide_to_narrow<-function(in_dt, in_colnames_one_cat_array, in_colnames_o
 
 }
 
+#Function that takes character vector, empty factor and optionally dictionary of substutitions to convert a character string into a factor.
+#Values "NA" are converted into a NA silently
+convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), reportClass, type) {
+#  browser()
+#  if(colname=='q_153') browser()
+  #if(colname=='q_99.1a') browser()
+  in_char[in_char=='NA']<-NA
+  uvals<-setdiff(unique(in_char), NA)
+  names(factor_dict)<-tolower(names(factor_dict))
+
+  if('factor' %in% class(out_factor)) {
+    labels<-danesurowe::GetLevels(out_factor, flag_recalculate = FALSE)
+    not_matched<-uvals[!tolower(uvals) %in% tolower(names(labels))]
+    matched<-uvals[tolower(uvals) %in% tolower(names(labels))]
+    for(m in matched) {
+      pos<-which(tolower(m)==tolower(names(labels)))
+      out_factor[in_char==m]<-names(labels)[[pos]]
+    }
+    matched<-intersect(tolower(not_matched), names(factor_dict))
+    not_matched<-setdiff(tolower(not_matched), names(factor_dict))
+    for(m in matched) {
+      if(tolower(m)=='internal medicine') browser()
+      cases<-which(tolower(in_char)==m)
+      if(length(cases)==0) {
+        browser()
+      }
+      if(length(m)!=1) browser()
+      pos<-which(tolower(names(factor_dict))==m)
+      if(length(pos)!=1) browser()
+      target<-factor_dict[[pos]]
+      if(length(target)!=2) browser()
+      target<-target[[1]]
+      if(!is.na(target)) {
+        pos<-which(tolower(target)==tolower(names(labels)))
+        if(length(pos)!=1){
+          browser()
+        }
+        target<-names(labels)[[pos]]
+      }
+      out_factor[cases]<-target
+      if(factor_dict[[m]][[2]]) {
+        reportClass$add_element(type=type, case=cases, var = colname)
+      }
+    }
+    for(m in not_matched) {
+      browser()
+      reportClass$add_element(type='manual_text', case=which(in_char==m), var = colname)
+    }
+  } else {
+    broswer()
+  }
+  return(out_factor)
+}
+
+
 disease_in_family<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
-  #TODO:
-  #Zrób oddzielną funkcję, która zbiera odpowiedzi będące podformularzem z kolumną określającą id członka rodziny
-  #oraz kolumnami wartości na postać płaską, w której wartości są dla kolejnych, z góry określonych
-  #poziomów, oraz kilka wartości "inne" wg. starego planu.
-  #
-  #Wywołaj tą funkcję stąd.
-  #
-  #Funkcja musi przyjmować rekordy w formacie (id kol. z id członka rodziny, id kol. z wartościami).
-  #
-  # Wejście:
-  # 1. wektor kolumn, gdzie każda dotyczy cechy w jednej z kategorii
-  # 2. Wektor nazw factora odpowiadająca tym kategoriom
-  # 3. Wektor kolumn z nazwami innych kategorii (factor/character)
-  # 4. Wektor z cechami z tych innych kategorii
+  if(length(in_colnames)!=10) {
+    browser()
+  }
+  if(length(out_colnames)!=8) {
+#    browser()
+  }
+#  browser()
+
 
   convert_wide_to_narrow_simple(in_dt = in_dt, in_colnames_one_cat = in_colnames[2:7],
                                 in_colnames_other_cat = in_colnames[seq(8, length(in_colnames))], reportClass = reportClass,
                                 in_colnames_one_cat_factor = c('Mother', 'Father', 'Brother', 'Homozygous twin', 'Sister', 'Homozygous twin'),
-                                out_dt = out_dt, out_factor = names(danesurowe::GetLevels(out_dt$q_100a_1)), out_colnames = out_colnames,
+                                out_dt = out_dt, out_factor = names(danesurowe::GetLevels(out_dt[[out_colnames[[1]] ]])), out_colnames = out_colnames,
                                 factor_dic=list('uncle'='Uncle unknown line', 'yes'='!', 'no'='!', 'yes, sister'='Sister',
                                                 'uncle (brother of father)'='Uncle paternal',
                                                 'grandmother (questionable )'='Grandmother unknown line',
+                                                'grandmother (questionable)'='Grandmother unknown line',
+                                                'grandmother (?)'='Grandmother unknown line',
+                                                'grandfather (?)'='Grandfather unknown line',
                                                 'maybe great-grandmother?'='Grandmother unknown line',
+                                                'maybe sister ?'='Sister',
                                                 'uncle (mother´s brother)'='Uncle paternal',
                                                 'grandmother'='Grandmother unknown line',
                                                 'second cousin'='!',
+                                                'patient'=NA,
+                                                'yes, aunt maternal'='Aunt maternal',
                                                 'uncle father side'='Uncle paternal',
                                                 'maternal grandmother'='Grandmother maternal',
-                                                'Aunt father side'='Aunt  paternal',
+                                                'aunt father side'='Aunt  paternal',
                                                 'aunt'='Aunt unknown line',
                                                 'grandfather'='Grandfather unknown line',
                                                 'grandmother'='Grandmother unknown line',
                                                 'niece'='Niece unknown line',
                                                 'dsughter'='Daughter',
                                                 'grandaunt'='Aunt unknown line',
+                                                'great-uncle'='Uncle unknown line',
                                                 'cousin'='!',
-                                                'aunt'='Aunt unknown line'))
-  if(length(in_colnames)!=10) {
-    browser()
-  }
-  if(length(out_colnames)!=8) {
-    browser()
-  }
-  in_val<-in_dt[[in_colnames]]
-  in_val[in_val=='NA']<-NA
-  uvals<-setdiff(unique(in_val), NA)
-
-  out_val<-out_dt[[out_colnames]]
-  browser()
+                                                'aunt'='Aunt unknown line',
+                                                'alzheimer disease'='!',
+                                                'grandma (father site)'='Grandmother paternal',
+                                                'maternal aunt'='Aunt maternal',
+                                                'grandfather (father of mother)'='Grandfather paternal',
+                                                'grandmother (maternal)'= 'Grandmother maternal',
+                                                'aunt (paternal)'='Aunt  paternal',
+                                                "father's sister"='Aunt  paternal',
+                                                'aunt (father´s sister)'='Aunt  paternal',
+                                                'aunt (father sister)'='Aunt  paternal',
+                                                'grandmother mother side' = 'Grandmother maternal',
+                                                "father's brother"='Uncle paternal',
+                                                "father's mother"='Grandfather maternal',
+                                                "father's father"='Grandfather paternal',
+                                                'five aunts'='Aunt unknown line',
+                                                "uncle's granddaughter"='Niece maternal',
+                                                'great uncle'='Uncle unknown line'))
   out_dt
 }
 
@@ -540,6 +625,7 @@ manual_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug
 }
 
 specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+  browser()
   #Do nothing
   out_dt
 }

@@ -222,3 +222,9 @@ generateNewVariables<-function(db) {
   db$q_51_1.score[seq_len(nrow(db))]<-new_ALS1
   db$q_51_1.rate[seq_len(nrow(db))]<-(48-db$q_51_1.score)/db$als_duration
 }
+
+
+na.replace <- function (x, to_what=0L) {
+  x[is.na(x)] <- to_what
+  return(x)
+}

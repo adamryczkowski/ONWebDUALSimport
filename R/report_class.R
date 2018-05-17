@@ -7,8 +7,12 @@ ReportClass<-R6::R6Class(
       #do nothing
     },
     add_element=function(type, case, var, par1=character(0), par2=character(0)) {
-      item<-list(type=type, case=case, var=var, par1=par1, par2=par2)
-      private$elements_<-c(private$elements_, list(item))
+      for(scase in case) {
+        for(v in var) {
+          item<-list(type=type, case=scase, var=v, par1=par1, par2=par2)
+          private$elements_<-c(private$elements_, list(item))
+        }
+      }
     }
   ),
   active = list(
