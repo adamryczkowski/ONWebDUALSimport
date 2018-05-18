@@ -38,7 +38,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 		  }
 		}
 
-#		if(i==529) browser()
+		#if(i==530) browser()
 
 		if(i<nrow(dict)) {
 		  if(is.na(dict$convtype1[[i+1]])) {
@@ -55,7 +55,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 		if(flag_cont) {
 		  j<-1
 		  in_colnames<-dict$in_colname[[i]]
-      while(dict$convtype1[[j+i]]=='cont') {
+      while(identical(dict$convtype1[[j+i]],'cont')) {
         if(! in_colnames[[j]] %in% colnames(in_dt)) {
           browser()
         }

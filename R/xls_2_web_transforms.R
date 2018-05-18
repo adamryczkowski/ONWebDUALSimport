@@ -88,6 +88,21 @@ to_report<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, re
   out_dt
 }
 
+parse_list_as_list<-function(pars_in) {
+  values<-list()
+  for(i in seq_along(pars_in)) {
+    value<-names(pars_in)[[i]]
+    flag_report<-FALSE
+    if(stringr::str_sub(value,1,1)=='!') {
+      value<-stringr::str_sub(value,2)
+      flag_report<-TRUE
+    }
+    values<-c(values, setNames(rep(list(list(value, flag_report)), length(pars_in[[i]])), pars_in[[i]]))
+  }
+  return(values)
+}
+
+
 parse_char_as_list<-function(pars_in) {
   pars<-stringr::str_split(pars_in, pattern=stringr::fixed(";"))[[1]]
   keys<-character(length(pars))
@@ -355,53 +370,115 @@ convert_wide_to_narrow<-function(in_dt, in_colnames_one_cat_array, in_colnames_o
 
 }
 
+convert_specialist<-function(in_char, colname, out_factor, reportClass, type) {
+  pars<-list('General Practitioner'=c('GP','general practicioner','general pracitioner','general and familiar medicine \\(gp\\)',
+                                      'general practioner', 'general practicer', 'practitioner', 'family doctor', 'PRACTİTİONER'),
+             '!'=c('ftr','lor','41913', '42036', 'clinic','first','second','mhh','hospital','university hostpital desden','yes', 'NA Y'),
+             'NA'=c('nf','no', 'N', 'no other','no diagnosis till consultation'),
+             'Cardiologist'=c('kardiologist'),
+             'Ear-Nose-Throat Doctor (ENT)'=c('ent','phoniatrist/ent','ear nose troat doctor','ear-nose-throat-doctor',
+                                              'ear-nose-troat-doctor','otorhinolaryngology \\(ent\\)'),
+             '!Ear-Nose-Throat Doctor (ENT)'=c('laryngologist','phoniater,no','otolaryngologist'),
+             'General surgeon'=c('surgeon'),
+             '!General surgeon'=c('vascular surgeon','surgeon /ent'),
+             'Internal Medicine'=c('internal medicen','internal medixcine','interna medicine', 'İnternal medicine','İnterna medicine', 'İnternal medixcine'),
+             'Neurosurgeon'=c('neurosurgen','neurosurgery'),
+             'Neurologist'=c('neurology','second neurologist','neurologist clinic','neurologist \\(hospital\\)','first neurology',
+                             'first neurologist','neurologisy','neruologist','neurlogist','neurologist \\(clinic\\)',
+                             'neurologist c','second neurology','neurologist in clinic','neurologist 8th specialist', 'NEUROLOGİST'),
+             'Orthopaedist'=c('ortopedist','orthopedic surgeon','orthopedist hospital','orthopediest','ortopaedist',
+                              'orthopedist','orthopedic','ortophedist', 'ORTOPEDİST'),
+             'Pneumologist'=c('pneumolog','PNEUMOLOGİST'),
+             'Psychiatrist'=c('physiatrist','pm&r \\(physiatrist\\)','pm&r'),
+             '!Pneumologist'=c('pulmonologist'),
+             'Rehabilitation specialist'=c('rehabilitation','physical medicine and rehabilitation'),
+             'Rheumatologist'=c('rheumathologist','reumathologist','reumatologist'),
+             '!Other'=c('physiotherayist','dentist','hematologist','psychologist','internist','orthodontist','gastroenterologist')
+  )
+  par_l<-parse_list_as_list(pars)
+#  par_l<-parse_char_as_list(pars)
+  out<-convert_manual_text(in_char=in_char, colname=colname, out_factor=out_factor, factor_dict=par_l, reportClass=reportClass, type=type,
+                           str_regex_suffix = '([, ]+((no?)|(y(es)?)))?', str_regex_prefix='[\r\n ]?')
+  return(out)
+}
+
 #Function that takes character vector, empty factor and optionally dictionary of substutitions to convert a character string into a factor.
 #Values "NA" are converted into a NA silently
-convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), reportClass, type) {
+convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), reportClass, type, str_regex_suffix='', str_regex_prefix='') {
 #  browser()
 #  if(colname=='q_153') browser()
   #if(colname=='q_99.1a') browser()
+
+
   in_char[in_char=='NA']<-NA
-  uvals<-setdiff(unique(in_char), NA)
-  names(factor_dict)<-tolower(names(factor_dict))
+  input_uniques<-setdiff(unique(in_char), NA)
+  if(str_regex_suffix=='') {
+    dict_patterns<-stringr::regex(paste0('^', names(factor_dict), '$'), ignore_case = TRUE)
+  } else {
+    dict_patterns<-stringr::regex(paste0('^', str_regex_prefix, names(factor_dict), str_regex_suffix, '$'), ignore_case = TRUE)
+  }
+  #browser()
 
   if('factor' %in% class(out_factor)) {
-    labels<-danesurowe::GetLevels(out_factor, flag_recalculate = FALSE)
-    not_matched<-uvals[!tolower(uvals) %in% tolower(names(labels))]
-    matched<-uvals[tolower(uvals) %in% tolower(names(labels))]
-    for(m in matched) {
-      pos<-which(tolower(m)==tolower(names(labels)))
-      out_factor[in_char==m]<-names(labels)[[pos]]
-    }
-    matched<-intersect(tolower(not_matched), names(factor_dict))
-    not_matched<-setdiff(tolower(not_matched), names(factor_dict))
-    for(m in matched) {
-      if(tolower(m)=='internal medicine') browser()
-      cases<-which(tolower(in_char)==m)
-      if(length(cases)==0) {
+    labels<-names(danesurowe::GetLevels(out_factor, flag_recalculate = FALSE))
+    label_patterns<-stringr::regex(paste0('^',str_regex_prefix, tolower(labels), str_regex_suffix, '$'), ignore_case = TRUE)
+    iu_matches<-purrr::map_lgl(input_uniques,~sum(stringr::str_detect(., label_patterns))>0)
+    iu_matched<-input_uniques[iu_matches]
+    not_matched<-input_uniques[!iu_matches]
+
+    for(ium in iu_matched) {
+      which_pattern<-which(stringr::str_detect(ium, label_patterns))
+      if(length(which_pattern)!=1) {
         browser()
       }
-      if(length(m)!=1) browser()
-      pos<-which(tolower(names(factor_dict))==m)
-      if(length(pos)!=1) browser()
-      target<-factor_dict[[pos]]
-      if(length(target)!=2) browser()
-      target<-target[[1]]
-      if(!is.na(target)) {
-        pos<-which(tolower(target)==tolower(names(labels)))
-        if(length(pos)!=1){
+      pattern<-label_patterns[[which_pattern]]
+      attributes(pattern)<-attributes(label_patterns)
+      which_cases<-na.replace(stringr::str_detect(in_char, pattern), FALSE)
+      out_factor[which_cases]<-labels[[which_pattern]]
+    }
+
+    iu_matches<-purrr::map_lgl(not_matched,~sum(stringr::str_detect(., dict_patterns))>0)
+    iu_matched<-not_matched[iu_matches]
+    not_matched<-not_matched[!iu_matches]
+
+    for(ium in iu_matched) {
+      if(ium=='neruology,No') browser()
+      if(ium=='\r\npsychiatrist N') browser()
+      which_pattern<-which(stringr::str_detect(ium, dict_patterns))
+      if(length(which_pattern)!=1) {
+        browser()
+      }
+      pattern<-dict_patterns[[which_pattern]]
+      attributes(pattern)<-attributes(label_patterns)
+      which_cases<-na.replace(stringr::str_detect(in_char, pattern), FALSE)
+
+      matched_label<-factor_dict[[which_pattern]][[1]]
+      if(is.na(matched_label)) {
+        matched_label<-''
+      }
+      if(matched_label=='NA') {
+        matched_label<-''
+      }
+      flag_report<-factor_dict[[which_pattern]][[2]]
+      if(matched_label!='') {
+        which_label<-which(stringr::str_detect(matched_label, stringr::fixed(labels, ignore_case = TRUE)))
+        if(length(which_label)!=1) {
           browser()
         }
-        target<-names(labels)[[pos]]
+        out_factor[which_cases]<-labels[[which_label]]
+      } else {
+        out_factor[which_cases]<-NA
       }
-      out_factor[cases]<-target
-      if(factor_dict[[m]][[2]]) {
-        reportClass$add_element(type=type, case=cases, var = colname)
+
+      if(flag_report) {
+        reportClass$add_element(type=type, case=which_cases, var = colname)
       }
+
     }
     for(m in not_matched) {
       browser()
-      reportClass$add_element(type='manual_text', case=which(in_char==m), var = colname)
+      which_cases<-stringr::str_detect(in_char, stringr::fixed(m, ignore_case = TRUE))
+      reportClass$add_element(type=type, case=which_cases, var = colname)
     }
   } else {
     broswer()
@@ -620,13 +697,57 @@ units<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, report
 }
 
 manual_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
-  #Do nothing
+  if(length(in_colnames)>1) {
+    browser()
+  }
+  if(length(out_colnames)>1) {
+    browser()
+  }
+  #browser()
+  in_val<-in_dt[[in_colnames]]
+  out_val<-out_dt[[out_colnames]]
+
+  #  if(in_colnames=='q_153') browser()
+  if(!is.na(par)) {
+    par_l<-parse_char_as_list(par)
+  } else {
+    par_l<-list()
+  }
+
+  out_val<-convert_manual_text(in_char=as.character(in_val), colname=in_colnames, out_factor=out_val, factor_dict=par_l, reportClass, type='manual_factor')
+
+  data.table::set(out_dt,NULL,out_colnames, out_val)
   out_dt
+}
+
+one_specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+  if(length(in_colnames)>1) {
+    browser()
+  }
+  if(length(out_colnames)>1) {
+    browser()
+  }
+  #browser()
+  in_val<-in_dt[[in_colnames]]
+  out_val<-out_dt[[out_colnames]]
+  #browser()
+  #Do nothing
+  spec_fact<-convert_specialist(in_char = in_val, colname = in_colnames, out_factor = out_val,
+                                reportClass = reportClass, type = 'specialist')
+
+  data.table::set(out_dt,NULL,out_colnames, spec_fact)
 }
 
 specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
   browser()
   #Do nothing
+  for(spec_nr in seq_along(in_colnames)) {
+    in_colname<-in_colnames[[spec_nr]]
+    spec_fact<-convert_specialist(in_char = in_dt[[in_colname]], colname = in_colname, out_factor = out_dt[[out_colnames[[2]]]],
+                                  reportClass = reportClass, type = 'specialist')
+    browser()
+  }
+
   out_dt
 }
 
