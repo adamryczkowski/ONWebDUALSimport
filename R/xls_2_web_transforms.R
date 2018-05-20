@@ -131,6 +131,7 @@ parse_char_as_list<-function(pars_in) {
 }
 
 manual_text<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass, type='manual_text') {
+#  browser()
   if(length(in_colnames)>1) {
     browser()
   }
@@ -148,7 +149,16 @@ manual_text<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, 
     par_l<-list()
   }
 
-  out_val<-convert_manual_text(in_char=in_val, colname=in_colnames, out_factor=out_val, factor_dict=par_l, reportClass, type=type)
+  ans<-convert_manual_text(in_char=in_val, colname=in_colnames, out_factor=out_val, factor_dict=par_l, reportClass, type=type)
+  out_val<-ans$var
+  not_matched<-ans$not_matched
+
+  for(m in not_matched) {
+ #   browser()
+    which_cases<-which(stringr::str_detect(in_val, stringr::fixed(m, ignore_case = TRUE)))
+    reportClass$add_element(type=type, case=which_cases, var = in_colnames)
+  }
+
 
   data.table::set(out_dt,NULL,out_colnames, out_val)
   out_dt
@@ -370,43 +380,71 @@ convert_wide_to_narrow<-function(in_dt, in_colnames_one_cat_array, in_colnames_o
 
 }
 
-convert_specialist<-function(in_char, colname, out_factor, reportClass, type) {
-  pars<-list('General Practitioner'=c('GP','general practicioner','general pracitioner','general and familiar medicine \\(gp\\)',
-                                      'general practioner', 'general practicer', 'practitioner', 'family doctor', 'PRACTİTİONER'),
+convert_specialist<-function(in_char, colname, out_factor, reportClass, type, flag_return_other=FALSE, other_char=NULL) {
+  pars<-list('General Practitioner'=c('GP','general practicioner','general pracitioner','general and familiar medicine (gp)',
+                                      'general practioner', 'general practicer', 'practitioner', 'family doctor', 'PRACTİTİONER',
+                                      'general parctitioner'),
              '!'=c('ftr','lor','41913', '42036', 'clinic','first','second','mhh','hospital','university hostpital desden','yes', 'NA Y'),
              'NA'=c('nf','no', 'N', 'no other','no diagnosis till consultation'),
              'Cardiologist'=c('kardiologist'),
              'Ear-Nose-Throat Doctor (ENT)'=c('ent','phoniatrist/ent','ear nose troat doctor','ear-nose-throat-doctor',
-                                              'ear-nose-troat-doctor','otorhinolaryngology \\(ent\\)'),
+                                              'ear-nose-troat-doctor','otorhinolaryngology (ent)'),
              '!Ear-Nose-Throat Doctor (ENT)'=c('laryngologist','phoniater,no','otolaryngologist'),
              'General surgeon'=c('surgeon'),
              '!General surgeon'=c('vascular surgeon','surgeon /ent'),
              'Internal Medicine'=c('internal medicen','internal medixcine','interna medicine', 'İnternal medicine','İnterna medicine', 'İnternal medixcine'),
              'Neurosurgeon'=c('neurosurgen','neurosurgery'),
-             'Neurologist'=c('neurology','second neurologist','neurologist clinic','neurologist \\(hospital\\)','first neurology',
-                             'first neurologist','neurologisy','neruologist','neurlogist','neurologist \\(clinic\\)',
+             'Neurologist'=c('neurology', 'neruology', 'second neurologist','neurologist clinic','neurologist (hospital)','first neurology',
+                             'first neurologist','neurologisy','neruologist','neurlogist','neurologist (clinic)',
                              'neurologist c','second neurology','neurologist in clinic','neurologist 8th specialist', 'NEUROLOGİST'),
-             'Orthopaedist'=c('ortopedist','orthopedic surgeon','orthopedist hospital','orthopediest','ortopaedist',
+             'Orthopaedist'=c('ortopedist', 'orthopadist', 'orthopedic surgeon','orthopedist hospital','orthopediest','ortopaedist',
                               'orthopedist','orthopedic','ortophedist', 'ORTOPEDİST'),
              'Pneumologist'=c('pneumolog','PNEUMOLOGİST'),
-             'Psychiatrist'=c('physiatrist','pm&r \\(physiatrist\\)','pm&r'),
+             'Psychiatrist'=c('physiatrist','pm&r (physiatrist)','pm&r'),
              '!Pneumologist'=c('pulmonologist'),
              'Rehabilitation specialist'=c('rehabilitation','physical medicine and rehabilitation'),
-             'Rheumatologist'=c('rheumathologist','reumathologist','reumatologist'),
-             '!Other'=c('physiotherayist','dentist','hematologist','psychologist','internist','orthodontist','gastroenterologist')
-  )
+             'Rheumatologist'=c('rheumathologist','reumathologist','reumatologist'))
+  others<-list('!Other'=c('physiotherayist','dentist','hematologist','psychologist','internist','orthodontist','gastroenterologist'))
+  if(flag_return_other) {
+    if(is.null(other_char)) {
+      other_char<-rep(NA_character_,length(out_factor))
+    }
+    other_l<-setNames(others[[1]],others[[1]])
+  } else {
+    pars<-c(pars, others)
+    others<-list()
+  }
   par_l<-parse_list_as_list(pars)
-#  par_l<-parse_char_as_list(pars)
-  out<-convert_manual_text(in_char=in_char, colname=colname, out_factor=out_factor, factor_dict=par_l, reportClass=reportClass, type=type,
-                           str_regex_suffix = '([, ]+((no?)|(y(es)?)))?', str_regex_prefix='[\r\n ]?')
-  return(out)
+  #  par_l<-parse_char_as_list(pars)
+  ans<-convert_manual_text(in_char=in_char, colname=colname, out_factor=out_factor, factor_dict=par_l, reportClass=reportClass, type=type,
+                           str_regex_suffix = '([, ]+((no?)|(y(es)?)))?', str_regex_prefix='[\r\n ]*')
+  not_matched<-ans$not_matched
+  out<-ans$var
+  if(flag_return_other) {
+    ans<-identify_patterns(patterns_dic=other_l, invar=in_char, invar_uniques=not_matched, invar_labels=character(0),
+                           outvar=other_char,
+                           reportClass=reportClass, type=type, colname=colname,
+                           str_regex_prefix='[\r\n ]*', str_regex_suffix='([, ]+((no?)|(y(es)?)))?')
+    not_matched<-ans$not_matched
+    other_char<-ans$var
+  }
+  for(m in not_matched) {
+    browser()
+    which_cases<-stringr::str_detect(in_char, stringr::fixed(m, ignore_case = TRUE))
+    reportClass$add_element(type=type, case=which_cases, var = colname)
+  }
+  if(flag_return_other) {
+    return(list(factor_out=out, other_out=other_char))
+  } else {
+    return(out)
+  }
 }
 
 #Function that takes character vector, empty factor and optionally dictionary of substutitions to convert a character string into a factor.
 #Values "NA" are converted into a NA silently
-convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), reportClass, type, str_regex_suffix='', str_regex_prefix='') {
-#  browser()
-#  if(colname=='q_153') browser()
+convert_manual_text_old<-function(in_char, colname, out_factor, factor_dict=list(), reportClass, type, str_regex_suffix='', str_regex_prefix='', others=list()) {
+  #  browser()
+  #  if(colname=='q_153') browser()
   #if(colname=='q_99.1a') browser()
 
 
@@ -442,15 +480,15 @@ convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), 
     not_matched<-not_matched[!iu_matches]
 
     for(ium in iu_matched) {
-      if(ium=='neruology,No') browser()
-      if(ium=='\r\npsychiatrist N') browser()
+      #      if(ium=='neruology,No') browser()
+      #      if(ium=='\r\npsychiatrist N') browser()
       which_pattern<-which(stringr::str_detect(ium, dict_patterns))
       if(length(which_pattern)!=1) {
         browser()
       }
       pattern<-dict_patterns[[which_pattern]]
       attributes(pattern)<-attributes(label_patterns)
-      which_cases<-na.replace(stringr::str_detect(in_char, pattern), FALSE)
+      which_cases<-which(na.replace(stringr::str_detect(in_char, pattern), FALSE))
 
       matched_label<-factor_dict[[which_pattern]][[1]]
       if(is.na(matched_label)) {
@@ -485,7 +523,96 @@ convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), 
   }
   return(out_factor)
 }
+#Function that takes character vector, empty factor and optionally dictionary of substutitions to convert a character string into a factor.
+#Values "NA" are converted into a NA silently
+convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), reportClass, type, str_regex_suffix='', str_regex_prefix='') {
+  in_char[in_char=='NA']<-NA
+  input_uniques<-setdiff(unique(in_char), NA)
+  dict_patterns<-names(factor_dict)
 
+
+
+  if('factor' %in% class(out_factor)) {
+    labels<-names(danesurowe::GetLevels(out_factor, flag_recalculate = FALSE))
+    labels_list<-setNames(as.list(labels), labels)
+
+    ans<-identify_patterns(patterns_dic=labels_list, invar=in_char, invar_uniques=input_uniques, invar_labels=labels,
+                           outvar=out_factor,
+                           reportClass=reportClass, type=type, colname=colname,
+                           str_regex_prefix=str_regex_prefix, str_regex_suffix=str_regex_suffix)
+    out_factor<-ans$var
+    not_matched<-ans$not_matched
+
+    if(length(factor_dict)>0) {
+      ans<-identify_patterns(patterns_dic=factor_dict, invar=in_char, invar_uniques=not_matched, invar_labels=labels,
+                             outvar=out_factor,
+                             reportClass=reportClass, type=type, colname=colname,
+                             str_regex_prefix=str_regex_prefix, str_regex_suffix=str_regex_suffix)
+      out_factor<-ans$var
+      not_matched<-ans$not_matched
+    }
+  } else {
+    broswer()
+  }
+  return(list(var=out_factor, not_matched=not_matched))
+}
+
+#Performs replacement on invar using the patterns_dic and outputs them onto the outvar, returning it. Replacements that starts with '!' are reported.
+#patterns_dic has a format: pattern -> replcement.
+#If outvar is a factor, all replacements must be an existing level
+identify_patterns<-function(patterns_dic, invar, invar_uniques, invar_labels, outvar, reportClass, type, colname, str_regex_prefix='', str_regex_suffix='') {
+  patterns<-stringr::regex(paste0('^',str_regex_prefix, stringr::str_replace_all(names(patterns_dic), "(\\W)", "\\\\\\1"), str_regex_suffix, '$'), ignore_case = TRUE)
+  iu_matches<-purrr::map_lgl(invar_uniques,~sum(stringr::str_detect(., patterns))>0)
+  iu_matched<-invar_uniques[iu_matches]
+  not_matched<-invar_uniques[!iu_matches]
+  invar_labels_patterns<-paste0('^',str_regex_prefix, stringr::str_replace_all(invar_labels, "(\\W)", "\\\\\\1"),str_regex_suffix,'$')
+
+  for(ium in iu_matched) {
+    #      if(ium=='neruology,No') browser()
+    #      if(ium=='\r\npsychiatrist N') browser()
+    which_pattern<-which(stringr::str_detect(ium, patterns))
+    if(length(which_pattern)!=1) {
+      browser()
+    }
+    pattern<-patterns[[which_pattern]]
+    attributes(pattern)<-attributes(patterns)
+    which_cases<-which(na.replace(stringr::str_detect(invar, pattern), FALSE))
+
+    tmp<-patterns_dic[[which_pattern]]
+    if(length(tmp)==2) {
+      matched_label<-tmp[[1]]
+      flag_report<-tmp[[2]]
+    } else {
+      matched_label<-tmp
+      flag_report<-FALSE
+    }
+    if(is.na(matched_label)) {
+      matched_label<-''
+    }
+    if(matched_label=='NA') {
+      matched_label<-''
+    }
+    if(matched_label!='') {
+      if(length(invar_labels)>0) {
+        which_label<-which(stringr::str_detect(matched_label, stringr::regex(invar_labels_patterns, ignore_case = TRUE)))
+        if(length(which_label)!=1) {
+          browser()
+        }
+        outvar[which_cases]<-invar_labels[[which_label]]
+      } else {
+        outvar[which_cases]<-matched_label
+      }
+    } else {
+      outvar[which_cases]<-NA
+    }
+
+    if(flag_report) {
+      reportClass$add_element(type=type, case=which_cases, var = colname)
+    }
+
+  }
+  return(list(var=outvar, not_matched=not_matched))
+}
 
 disease_in_family<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
   if(length(in_colnames)!=10) {
@@ -696,7 +823,7 @@ units<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, report
   return(out_dt)
 }
 
-manual_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+manual_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass, type='manual_factor') {
   if(length(in_colnames)>1) {
     browser()
   }
@@ -714,13 +841,22 @@ manual_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug
     par_l<-list()
   }
 
-  out_val<-convert_manual_text(in_char=as.character(in_val), colname=in_colnames, out_factor=out_val, factor_dict=par_l, reportClass, type='manual_factor')
+  ans<-convert_manual_text(in_char=as.character(in_val), colname=in_colnames, out_factor=out_val, factor_dict=par_l, reportClass, type=type)
+  out_val<-ans$var
+  not_matched<-ans$not_matched
+
+  for(m in not_matched) {
+    #   browser()
+    which_cases<-which(stringr::str_detect(in_val, stringr::fixed(m, ignore_case = TRUE)))
+    reportClass$add_element(type=type, case=which_cases, var = in_colnames)
+  }
 
   data.table::set(out_dt,NULL,out_colnames, out_val)
   out_dt
 }
 
 one_specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+#  browser()
   if(length(in_colnames)>1) {
     browser()
   }
@@ -743,9 +879,16 @@ specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, r
   #Do nothing
   for(spec_nr in seq_along(in_colnames)) {
     in_colname<-in_colnames[[spec_nr]]
-    spec_fact<-convert_specialist(in_char = in_dt[[in_colname]], colname = in_colname, out_factor = out_dt[[out_colnames[[2]]]],
-                                  reportClass = reportClass, type = 'specialist')
-    browser()
+    ans<-convert_specialist(in_char = in_dt[[in_colname]], colname = in_colname, out_factor = out_dt[[out_colnames[[2]]]],
+                                  reportClass = reportClass, type = 'specialist', flag_return_other=TRUE)
+    spec_fact<-ans$factor_out
+    other_out<-ans$other_out
+    nona<-!is.na(spec_fact) | !is.na(other_out)
+    val<-rep(NA_integer_, nrow(in_dt))
+    val[nona]<-spec_nr
+    data.table::set(out_dt, NULL, out_colnames[[(spec_nr-1)*4+1]], val)
+    data.table::set(out_dt, NULL, out_colnames[[(spec_nr-1)*4+2]], spec_fact)
+    data.table::set(out_dt, NULL, out_colnames[[(spec_nr-1)*4+3]], other_out)
   }
 
   out_dt
