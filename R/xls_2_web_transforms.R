@@ -384,27 +384,32 @@ convert_specialist<-function(in_char, colname, out_factor, reportClass, type, fl
   pars<-list('General Practitioner'=c('GP','general practicioner','general pracitioner','general and familiar medicine (gp)',
                                       'general practioner', 'general practicer', 'practitioner', 'family doctor', 'PRACTİTİONER',
                                       'general parctitioner'),
-             '!'=c('ftr','lor','41913', '42036', 'clinic','first','second','mhh','hospital','university hostpital desden','yes', 'NA Y'),
+             '!'=c('ftr','lor','41913', '42036', 'clinic','first','second','mhh','hospital','university hostpital desden','yes', 'NA Y', 'Y',
+                   '42248','1','ENO N'),
              'NA'=c('nf','no', 'N', 'no other','no diagnosis till consultation'),
              'Cardiologist'=c('kardiologist'),
-             'Ear-Nose-Throat Doctor (ENT)'=c('ent','phoniatrist/ent','ear nose troat doctor','ear-nose-throat-doctor',
-                                              'ear-nose-troat-doctor','otorhinolaryngology (ent)'),
+             'Ear-Nose-Throat Doctor (ENT)'=c('ent','phoniatrist/ent','ear nose troat doctor','ear-nose-throat-doctor','ent-doctor',
+                                              'ear-nose-troat-doctor','otorhinolaryngology (ent)', 'otolarygologist','Ear Nose Troat Doctor clinic'),
              '!Ear-Nose-Throat Doctor (ENT)'=c('laryngologist','phoniater,no','otolaryngologist'),
              'General surgeon'=c('surgeon'),
              '!General surgeon'=c('vascular surgeon','surgeon /ent'),
-             'Internal Medicine'=c('internal medicen','internal medixcine','interna medicine', 'İnternal medicine','İnterna medicine', 'İnternal medixcine'),
+             'Internal Medicine'=c('internal medicen','internal medixcine','interna medicine', 'İnternal medicine','İnterna medicine',
+                                   'İnternal medixcine','Internal c N','internist'),
              'Neurosurgeon'=c('neurosurgen','neurosurgery'),
              'Neurologist'=c('neurology', 'neruology', 'second neurologist','neurologist clinic','neurologist (hospital)','first neurology',
-                             'first neurologist','neurologisy','neruologist','neurlogist','neurologist (clinic)',
-                             'neurologist c','second neurology','neurologist in clinic','neurologist 8th specialist', 'NEUROLOGİST'),
+                             'first neurologist','neurologisy','neruologist','neurlogist','neurologist (clinic)','neurologist/N',
+                             'neurologist c','second neurology','neurologist in clinic','neurologist 8th specialist', 'NEUROLOGİST',
+                             'thrid neurology','third neurologist','third neurology','secod neurology','hospital (neurology)','2.neurology',
+                             'neurologist Y 2015-04-01','neurologist','fourth neurology','2. neurology'),
              'Orthopaedist'=c('ortopedist', 'orthopadist', 'orthopedic surgeon','orthopedist hospital','orthopediest','ortopaedist',
-                              'orthopedist','orthopedic','ortophedist', 'ORTOPEDİST'),
+                              'orthopedist','orthopedic','ortophedist', 'ORTOPEDİST','orthopaedic surgeon','orthopaedist','orthopeadist'),
              'Pneumologist'=c('pneumolog','PNEUMOLOGİST'),
-             'Psychiatrist'=c('physiatrist','pm&r (physiatrist)','pm&r'),
              '!Pneumologist'=c('pulmonologist'),
+             'Psychiatrist'=c('physiatrist','pm&r (physiatrist)','pm&r'),
              'Rehabilitation specialist'=c('rehabilitation','physical medicine and rehabilitation'),
-             'Rheumatologist'=c('rheumathologist','reumathologist','reumatologist'))
-  others<-list('!Other'=c('physiotherayist','dentist','hematologist','psychologist','internist','orthodontist','gastroenterologist'))
+             'Rheumatologist'=c('rheumathologist','reumathologist','reumatologist','Rheumatolpgist'))
+  others<-list('!Other'=c('physiotherayist','dentist','hematologist','psychologist','orthodontist','gastroenterologist','convalescent home',
+                          'doctor physiotherapist','endocrinologist'))
   if(flag_return_other) {
     if(is.null(other_char)) {
       other_char<-rep(NA_character_,length(out_factor))
@@ -417,7 +422,7 @@ convert_specialist<-function(in_char, colname, out_factor, reportClass, type, fl
   par_l<-parse_list_as_list(pars)
   #  par_l<-parse_char_as_list(pars)
   ans<-convert_manual_text(in_char=in_char, colname=colname, out_factor=out_factor, factor_dict=par_l, reportClass=reportClass, type=type,
-                           str_regex_suffix = '([, ]+((no?)|(y(es)?)))?', str_regex_prefix='[\r\n ]*')
+                           str_regex_suffix = '([, /]+((no?)|(y(es)?)))?', str_regex_prefix='[\r\n ]*')
   not_matched<-ans$not_matched
   out<-ans$var
   if(flag_return_other) {
@@ -830,6 +835,9 @@ manual_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug
   if(length(out_colnames)>1) {
     browser()
   }
+  if(in_colnames=='centr_id') {
+#    browser()
+  }
   #browser()
   in_val<-in_dt[[in_colnames]]
   out_val<-out_dt[[out_colnames]]
@@ -875,7 +883,7 @@ one_specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debu
 }
 
 specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
-  browser()
+#  browser()
   #Do nothing
   for(spec_nr in seq_along(in_colnames)) {
     in_colname<-in_colnames[[spec_nr]]
