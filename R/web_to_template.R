@@ -1,8 +1,11 @@
 
 
 #Loads the template with the database read from the web, using the web_xls_dic.xlsx dictionary
-fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
-  reportClass<-ReportClass$new()
+fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA_character_){
+  reportClass<-dbcasereport::ReportClass$new()
+  if(!is.na(rownames_colname) && rownames_colname %in% colnames(in_dt)) {
+    reportClass$set_case_names(as.character(in_dt[[rownames_colname]]))
+  }
 	options(warn=2)
 
   ref_out_dt<-data.table::copy(out_dt) #Copy for the reference
@@ -171,7 +174,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000){
 		}
 
 	}
-	return(out_dt)
+	return(list(dt=out_dt, report=reportClass))
 }
 
 factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug, reportClass) {

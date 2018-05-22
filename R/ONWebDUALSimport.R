@@ -170,7 +170,14 @@ importAllDatabases<-function(path_prefix=NULL, flag_ALSFRS_as_integers=TRUE) {
   xlsdb_copy<-data.table::copy(xlsdb)
   ref_copy<-data.table::copy(ref)
 
-  ref<-fill_template(in_dt = xlsdb_copy, out_dt = ref_copy, dict = dict)
+  ans<-fill_template(in_dt = xlsdb_copy, out_dt = ref_copy, dict = dict, rownames_colname = 'q_0')
+  ref<-ans$dt
+  reportClass<-ans$report
+
+  debugonce(dbcasereport::compile_report)
+  dbcasereport::compile_report(reportClass = reportClass, fn_hasher = dbcasereport::general_hash_fn)
+
+  browser()
   to_delete<-c(colnames(ref)[which(stringr::str_detect(colnames(ref), pattern=stringr::regex('^\\.')))])
   for(cname in to_delete) {
     ref[[cname]]<-NULL

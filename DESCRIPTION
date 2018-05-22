@@ -22,9 +22,13 @@ Imports:
   lubridate,
   haven,
   Hmisc,
-  danesurowe
+  danesurowe,
+  dbcasereport
 Depends:
   data.table,
   danesurowe
-Remotes: adamryczkowski/danesurowe
+Remotes: 
+  adamryczkowski/danesurowe,
+  adamryczkowski/dbcasereport,
+  adamryczkowski/lists2df
 RoxygenNote: 6.0.1

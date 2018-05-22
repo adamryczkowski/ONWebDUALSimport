@@ -4,7 +4,8 @@
 \alias{importXLSDatabases}
 \title{Reads in all the Excel databases}
 \usage{
-importXLSDatabases(filename = NULL, path_prefix = NULL)
+importXLSDatabases(filename = NULL, path_prefix = NULL,
+  flag_ALSFRS_as_integers = TRUE)
 }
 \arguments{
 \item{filename}{If not-empty, function will save the database into the excel

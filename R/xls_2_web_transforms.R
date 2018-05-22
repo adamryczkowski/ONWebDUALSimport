@@ -717,7 +717,7 @@ units<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, report
   if(!is.na(par)) {
     konwersje<-stringr::str_split(par, pattern=';')[[1]]
     konwersje<-stringr::str_split(konwersje, pattern='->', n=2)
-    konwersje<-objectstorage::lists_to_df(konwersje)
+    konwersje<-lists2df::lists_to_df(konwersje)
     names(konwersje)<-c('from', 'to')
   } else {
     konwersje<-tibble(from=character(0), to=character(0))
