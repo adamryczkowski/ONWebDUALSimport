@@ -178,9 +178,9 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA
 }
 
 factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug, reportClass) {
-  # if(out_varname=='group') {
-  #   browser()
-  # }
+#  if(out_varname=='q_16g') {
+#    browser()
+#  }
   out_varname<-out_varname[[1]]
   var_from<-in_dt[[in_varname]]
   var_target<-out_dt[[out_varname]]
@@ -322,6 +322,8 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 	  browser()
 	}
 	var_out<-danesurowe::copy_obj_attributes(obj_source = var_target, obj_dest = var_out)
+	attr(var_out, 'levels')<-attr(var_target, 'levels')
+	attr(var_out, 'labels')<-attr(var_target, 'labels')
 
   out_dt[,(out_varname):=var_out]
 	# } else {

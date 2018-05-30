@@ -12,7 +12,6 @@ children<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, rep
 
 pattern_of_spreading<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
   #Do nothing
-  #browser()
   vals<-as.character(in_dt[[in_colnames]])
   sufixes<-stringr::str_sub(vals, nchar(vals))
   prefixes<-stringr::str_sub(vals, 1, nchar(vals)-1)
@@ -38,13 +37,13 @@ pattern_of_spreading<-function(in_dt, in_colnames, out_dt, out_colnames, par,  d
   if(!is.na(out_col_r)) {
     v<-out_dt[[out_col_r]]
     attributes(valr)<-attributes(v)
-    out_dt[,(out_col_r):=valr]
+    data.table::set(out_dt, NULL, out_col_r, valr)
   }
   if(!is.na(out_col_t)) {
-    valr<-as.integer(factor(sufixes))
+    valt<-as.integer(factor(sufixes))
     v<-out_dt[[out_col_t]]
-    attributes(valr)<-attributes(v)
-    out_dt[,(out_col_r):=valr]
+    attributes(valt)<-attributes(v)
+    data.table::set(out_dt, NULL, out_col_t, valt)
   }
   out_dt
 }
@@ -79,10 +78,16 @@ multiple_variants<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_d
   out_dt
 }
 
+#Simply reports all cases and inserts nothing.
 to_report<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
   for(in_colname in in_colnames) {
     in_val<-as.character(in_dt[[in_colname]])
-    reportClass$add_element(type = 'to_report', case = which(is.na(in_val)), var = in_colname)
+    for(j in which(!is.na(in_val))) {
+#      browser()
+      if(as.character(in_val[[j]])!='NA') {
+        reportClass$add_element(type = 'to_report', case = j, var = in_colname, par1=in_val[[j]])
+      }
+    }
   }
   #Do nothing
   out_dt
@@ -156,7 +161,7 @@ manual_text<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, 
   for(m in not_matched) {
  #   browser()
     which_cases<-which(stringr::str_detect(in_val, stringr::fixed(m, ignore_case = TRUE)))
-    reportClass$add_element(type=type, case=which_cases, var = in_colnames)
+    reportClass$add_element(type=type, case=which_cases, var = in_colnames, par1=m)
   }
 
 
@@ -295,7 +300,7 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
         } else if (is.na(translated_name[[1]])) {
           one_cat_factor_pos<-NA
         } else if ( translated_name[[1]]=='!') {
-          reportClass$add_element(type = bad_cat_type, case = non_empty_row, var = in_colname, par1=NA)
+          reportClass$add_element(type = bad_cat_type, case = non_empty_row, var = in_colname, par1=as.character(one_factor))
           one_cat_factor_pos<-NA
         } else {
           one_cat_factor_pos<-which(tolower(out_factor) == tolower(translated_name[[1]]))
@@ -307,7 +312,8 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
         target_column<-paste0('var_', one_factor)
 
         if(out_dt_tmp[[target_column]][[non_empty_row]]==1) {
-          reportClass$add_element(type = cat_dup_type, case = non_empty_row, var = in_colname)
+          #browser()
+          reportClass$add_element(type = cat_dup_type, case = non_empty_row, var = in_colname, par1=one_factor)
         } else {
           data.table::set(out_dt_tmp, non_empty_row, target_column, value)
         }
@@ -436,7 +442,7 @@ convert_specialist<-function(in_char, colname, out_factor, reportClass, type, fl
   for(m in not_matched) {
     browser()
     which_cases<-stringr::str_detect(in_char, stringr::fixed(m, ignore_case = TRUE))
-    reportClass$add_element(type=type, case=which_cases, var = colname)
+    reportClass$add_element(type=type, case=which_cases, var = colname, par=m)
   }
   if(flag_return_other) {
     return(list(factor_out=out, other_out=other_char))
@@ -514,14 +520,14 @@ convert_manual_text_old<-function(in_char, colname, out_factor, factor_dict=list
       }
 
       if(flag_report) {
-        reportClass$add_element(type=type, case=which_cases, var = colname)
+        reportClass$add_element(type=type, case=which_cases, var = colname, par1=ium)
       }
 
     }
     for(m in not_matched) {
       browser()
       which_cases<-stringr::str_detect(in_char, stringr::fixed(m, ignore_case = TRUE))
-      reportClass$add_element(type=type, case=which_cases, var = colname)
+      reportClass$add_element(type=type, case=which_cases, var = colname, par1=m)
     }
   } else {
     broswer()
@@ -612,7 +618,7 @@ identify_patterns<-function(patterns_dic, invar, invar_uniques, invar_labels, ou
     }
 
     if(flag_report) {
-      reportClass$add_element(type=type, case=which_cases, var = colname)
+      reportClass$add_element(type=type, case=which_cases, var = colname, par1=ium)
     }
 
   }
@@ -856,7 +862,7 @@ manual_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug
   for(m in not_matched) {
     #   browser()
     which_cases<-which(stringr::str_detect(in_val, stringr::fixed(m, ignore_case = TRUE)))
-    reportClass$add_element(type=type, case=which_cases, var = in_colnames)
+    reportClass$add_element(type=type, case=which_cases, var = in_colnames, par1=m)
   }
 
   data.table::set(out_dt,NULL,out_colnames, out_val)
@@ -894,9 +900,17 @@ specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, r
     nona<-!is.na(spec_fact) | !is.na(other_out)
     val<-rep(NA_integer_, nrow(in_dt))
     val[nona]<-spec_nr
+    src<-out_dt[[out_colnames[[(spec_nr-1)*4+1]]]]
     data.table::set(out_dt, NULL, out_colnames[[(spec_nr-1)*4+1]], val)
+    danesurowe::copy_var_attributes(var_source = src, var_dest_name = out_colnames[[(spec_nr-1)*4+1]], dt_dest = out_dt )
+
+    src<-out_dt[[out_colnames[[(spec_nr-1)*4+2]]]]
     data.table::set(out_dt, NULL, out_colnames[[(spec_nr-1)*4+2]], spec_fact)
+    danesurowe::copy_var_attributes(var_source = src, var_dest_name = out_colnames[[(spec_nr-1)*4+2]], dt_dest = out_dt )
+
+    src<-out_dt[[out_colnames[[(spec_nr-1)*4+3]]]]
     data.table::set(out_dt, NULL, out_colnames[[(spec_nr-1)*4+3]], other_out)
+    danesurowe::copy_var_attributes(var_source = src, var_dest_name = out_colnames[[(spec_nr-1)*4+3]], dt_dest = out_dt )
   }
 
   out_dt
@@ -965,7 +979,7 @@ to_integer<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, r
     browser()
     which_nint<-which(num_nint)
     for(i in seq_along(which_nint)) {
-      reportClass$add_element(type = 'to_integer', case = which_nint[[i]], var = in_colnames)
+      reportClass$add_element(type = 'to_integer', case = which_nint[[i]], var = in_colnames, par1=var_in[[i]])
     }
   }
 
@@ -1028,7 +1042,7 @@ conv_to_numeric<-function(var_in, var_name, reportClass, type, additional_nas=ch
 upper_bound_numeric<-function(var_in, var_name, reportClass, type, upper_bound) {
   upper_exceed<-which(var_in>upper_bound)
   for(val_exceed in upper_exceed) {
-    reportClass$add_element(type = type, case = val_exceed, var = var_name)
+    reportClass$add_element(type = type, case = val_exceed, var = var_name, par1=var_in[[val_exceed]])
   }
   var_in[upper_exceed]<-NA
   return(var_in)
@@ -1083,7 +1097,11 @@ Date_by_serial<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debu
   var_high_range<-as.Date(var_num[high_range], origin = "1899-12-30")
   bad_dates<-lubridate::decimal_date(var_high_range)
   bad_dates<-high_range[which(bad_dates<range[[1]] | bad_dates>range[[2]])]
-  reportClass$add_element(type = "Date_by_serial_range", case = bad_dates, var = in_colnames)
+  for (jcolname in in_colnames) {
+    for (i in bad_dates) {
+      reportClass$add_element(type = "Date_by_serial_range", case = i, var = jcolname, par1=in_dt[[jcolname]][[i]])
+    }
+  }
   var_target[high_range]<-var_high_range
   var_target[bad_dates]<-NA
 

@@ -172,17 +172,26 @@ importAllDatabases<-function(path_prefix=NULL, flag_ALSFRS_as_integers=TRUE) {
 
   ans<-fill_template(in_dt = xlsdb_copy, out_dt = ref_copy, dict = dict, rownames_colname = 'q_0')
   ref<-ans$dt
+  ONWebDUALSimport:::compare_dfs(webdb, ref, flag_structure_only = TRUE)
   reportClass<-ans$report
 
-  debugonce(dbcasereport::compile_report)
-  dbcasereport::compile_report(reportClass = reportClass, fn_hasher = dbcasereport::general_hash_fn)
+  #debugonce(dbcasereport::compile_report)
+  doc<-ReportGatherer::doc_Document$new(author = 'Adam Ryczkowski',title = 'DB consistency report')
+
+#  debugonce(dbcasereport::compile_report)
+  report_composer<-gen_report_composer(in_dt = xlsdb, out_dt = ref)
+  dbcasereport::compile_report(reportClass = reportClass, fn_hasher = dbcasereport::general_hash_fn, doc = doc, report_headers_list = report_chapters, report_composer = report_composer)
+  a<-pander::Pandoc$new()
+  doc$render(a)
+  a$export('/tmp/report', open=FALSE, options='+RTS -K100000000 -RTS --filter pandoc-fignos --filter pandoc-tablenos -M "tablenos-caption-name:Tabela" -M "fignos-caption-name:Rycina"')
+
+  joined_df<-rbind(webdb, ref, fill=TRUE)
 
   browser()
   to_delete<-c(colnames(ref)[which(stringr::str_detect(colnames(ref), pattern=stringr::regex('^\\.')))])
   for(cname in to_delete) {
-    ref[[cname]]<-NULL
+    data.table::set(joined_df, NULL, cname, NULL)
   }
-  ONWebDUALSimport:::compare_dfs(ref, webdb, flag_structure_only = TRUE)
   q_common<-intersect(ref$q_0, webdb$q_0)
   db_web<-webdb[!webdb$q_0 %in% q_common,]
   db<-suppressWarnings(rbind(as_tibble(ref), as_tibble(db_web)))

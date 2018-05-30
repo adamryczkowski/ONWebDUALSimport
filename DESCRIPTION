@@ -1,12 +1,13 @@
 Package: ONWebDUALSimport
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Title: Routines for importing and merging databases for the ONWebDUALS project
+Version: 0.9.0
+Author: Adam Ryczkowski
+Maintainer: Adam Ryczkowski <adam@statystyka.net>
+Description: It connects with the web server (user still needs to provide a working VPN connection) and downloads the database.
+    It also reads the databases from all supported Excel formats 
+    Finally it also merges the Excel format database into the web format and produces a report with conversion errors and warnings
+License: GNU GPL-3
 Encoding: UTF-8
 LazyData: true
 Imports:
@@ -23,12 +24,17 @@ Imports:
   haven,
   Hmisc,
   danesurowe,
-  dbcasereport
+  dbcasereport,
+  lists2df,
+  ReportGatherer,
+  itemNaming
 Depends:
   data.table,
   danesurowe
 Remotes: 
   adamryczkowski/danesurowe,
   adamryczkowski/dbcasereport,
-  adamryczkowski/lists2df
+  adamryczkowski/lists2df,
+  adamryczkowski/ReportGatherer,
+  adamryczkowski/itemNaming,
 RoxygenNote: 6.0.1
