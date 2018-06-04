@@ -9,15 +9,15 @@ read_ref<-function(row_length=0, reference_source=NULL, flag_ALSFRS_as_integers=
   if(is.null(reference_source)) {
     reference_source<-system.file(getOption('onwebduals.dbtemplate'),package='ONWebDUALSimport')
   }
-
 #	debugonce(danesurowe::readDaneSurowe4)
 	tmpl<-danesurowe::readDaneSurowe4(reference_source)
-	template<-tmpl[integer(0),]
-	template<-danesurowe::copy_dt_attributes(dt_source = tmpl, dt_dest=template)
-	if(row_length>0) {
-		template<-rbind(template, lp=seq(length.out=row_length), fill=TRUE)
-		template<-danesurowe::copy_dt_attributes(dt_source = tmpl, dt_dest=template)
-	}
+	template<-gen_blank_df(tmpl, row_length)
+	# template<-tmpl[integer(0),]
+	# template<-danesurowe::copy_dt_attributes(dt_source = tmpl, dt_dest=template)
+	# if(row_length>0) {
+	# 	template<-rbind(template, lp=seq(length.out=row_length), fill=TRUE)
+	# 	template<-danesurowe::copy_dt_attributes(dt_source = tmpl, dt_dest=template)
+	# }
   if(flag_ALSFRS_as_integers==TRUE) {
     template<-recode_ALSFRS(template)
   }

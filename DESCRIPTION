@@ -30,7 +30,8 @@ Imports:
   itemNaming
 Depends:
   data.table,
-  danesurowe
+  danesurowe,
+  itemNaming
 Remotes: 
   adamryczkowski/danesurowe,
   adamryczkowski/dbcasereport,

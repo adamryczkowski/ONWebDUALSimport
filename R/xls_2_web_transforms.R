@@ -56,21 +56,31 @@ multiple_variants<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_d
 
   for(in_colname in in_colnames) {
     val_in<-as.integer(in_dt[[in_colname]])
-    levs<-seq(min(val_in, na.rm=TRUE), max(val_in, na.rm = TRUE))
-    if(length(levs)>length(out_colnames)) {
-      browser() #Too many levels
-    }
-    for(i in seq_along(levs)) {
-      outval<-out_dt[[out_colnames[[i]] ]]
-      lev<-levs[[i]]
-      if('factor' %in% class(outval)) {
-        new_levels<-danesurowe::GetLevels(outval, flag_recalculate = FALSE)
-        assertthat::are_equal(levels, new_levels)
-        outval[val_in==lev]<-names(levels)[[2]]
-        outval[val_in!=lev & is.na(outval)]<-names(levels)[[1]]
-        out_dt[,(out_colnames[[i]]):=outval]
+    if(!is.na(par)) {
+      if(par=='1->NA;-1') {
+        val_in[val_in==1]<-NA
+        val_in<-val_in-1
       } else {
         browser()
+      }
+    }
+    if(!all(is.na(val_in))) {
+      levs<-seq(min(val_in, na.rm=TRUE), max(val_in, na.rm = TRUE))
+      if(length(levs)>length(out_colnames)) {
+        browser() #Too many levels
+      }
+      for(i in seq_along(levs)) {
+        outval<-out_dt[[out_colnames[[i]] ]]
+        lev<-levs[[i]]
+        if('factor' %in% class(outval)) {
+          new_levels<-danesurowe::GetLevels(outval, flag_recalculate = FALSE)
+          assertthat::are_equal(levels, new_levels)
+          outval[val_in==lev]<-names(levels)[[2]]
+          outval[val_in!=lev & is.na(outval)]<-names(levels)[[1]]
+          out_dt[,(out_colnames[[i]]):=outval]
+        } else {
+          browser()
+        }
       }
     }
   }
@@ -215,12 +225,20 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
   #checkmate::assertCharacter(in_colnames_one_cat_factor, unique=TRUE)
   checkmate::assertTRUE(length(in_colnames_one_cat)==length(in_colnames_one_cat_factor))
 
-  checkmate::assertCharacter(out_factor, unique = TRUE)
-  checkmate::assertSubset(in_colnames_one_cat_factor, out_factor)
+  if('numeric' %in% class(out_factor)) {
+    checkmate::assert_named(out_factor)
+    out_factor_labels<-names(out_factor)
+  } else {
+    checkmate::assertCharacter(out_factor, unique = TRUE)
+    out_factor_labels<-out_factor
+
+  }
+
+  checkmate::assertSubset(in_colnames_one_cat_factor, out_factor_labels)
 
   checkmate::assertCharacter(out_colnames)
-  if(length(out_factor)!=length(out_colnames)) {
-    #checkmate::assertTRUE(2*length(out_factor)==length(out_colnames))
+  if(length(out_factor_labels)!=length(out_colnames)) {
+    #checkmate::assertTRUE(2*length(out_factor_labels)==length(out_colnames))
 
     out_colnames<-matrix(out_colnames, c(2,length(out_colnames)/2))
     out_valnames<-out_colnames[2,]
@@ -232,14 +250,14 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
 
   #Initialize the database. First we initialize with the wide format, with a dedicated column to each level
   out_dt_tmp<-data.table::data.table(.to.delete=seq_len(nrow(in_dt)))
-  out_dt_tmp[,(paste0('var_',out_factor)):=0L]
+  out_dt_tmp[,(paste0('var_',out_factor_labels)):=0L]
   data.table::set(out_dt_tmp, NULL, '.to.delete',NULL)
 
   #First we fill all the dedicated factors
   for(i in seq_along(unique(in_colnames_one_cat_factor))) {
     one_factor<-in_colnames_one_cat_factor[[i]]
     one_cat_factor_poses<-which(in_colnames_one_cat_factor == one_factor)
-    out_pos<-which(one_factor == out_factor)
+    out_pos<-which(one_factor == out_factor_labels)
     out_var<-paste0('var_', one_factor)
     val_var<-na.replace(out_dt_tmp[[out_var]])
     for(one_cat_factor_pos in one_cat_factor_poses) {
@@ -267,7 +285,7 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
     in_colname<-in_colnames_other_cat[[i]]
     many_factors<-in_dt[[in_colname]]
     if('numeric' %in% class(many_factors) || 'integer' %in% class(many_factors) ) {
-      many_factors<-factor(many_factors, levels=seq_along(out_factor), labels=out_factor)
+      many_factors<-factor(many_factors, levels=seq_along(out_factor_labels), labels=out_factor_labels)
     }
     many_factors<-as.character(many_factors)
     err_records<-which(many_factors %in% in_colnames_one_cat_factor )
@@ -288,7 +306,7 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
 #      cat(paste0('non_empty_nr=',non_empty_row, '\n'))
       value=1L
       one_factor<-many_factors[[non_empty_row]]
-      one_cat_factor_pos<-which(tolower(out_factor) == tolower(one_factor))
+      one_cat_factor_pos<-which(tolower(out_factor_labels) == tolower(one_factor))
       if(length(one_cat_factor_pos)==0) {
         if(one_factor=='five aunts') {
           value=5L
@@ -303,12 +321,12 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
           reportClass$add_element(type = bad_cat_type, case = non_empty_row, var = in_colname, par1=as.character(one_factor))
           one_cat_factor_pos<-NA
         } else {
-          one_cat_factor_pos<-which(tolower(out_factor) == tolower(translated_name[[1]]))
+          one_cat_factor_pos<-which(tolower(out_factor_labels) == tolower(translated_name[[1]]))
         }
       }
       if(length(one_cat_factor_pos)==0) browser()
       if(!is.na(one_cat_factor_pos)) {
-        one_factor<-out_factor[[one_cat_factor_pos]]
+        one_factor<-out_factor_labels[[one_cat_factor_pos]]
         target_column<-paste0('var_', one_factor)
 
         if(out_dt_tmp[[target_column]][[non_empty_row]]==1) {
@@ -321,16 +339,21 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
     }
   }
   #Now it is a time to convert this wide format into a narrow
-  colnames(out_dt_tmp)<-out_factor
+  colnames(out_dt_tmp)<-out_factor_labels
   out_dt_tmp<-data.matrix(out_dt_tmp)
   out_dt_list<-plyr::alply(out_dt_tmp, 1, function(x) which(x>0))
 
   out_dt_tmp<-data.table::data.table(.to.delete=seq_len(nrow(in_dt)))
+  if(is.null(names(out_factor))) {
+    val_template<-factor(rep(NA, nrow(in_dt)), levels = out_factor)
+  } else {
+    val_template<-labelled::labelled(rep(NA_real_, nrow(in_dt)), out_factor)
+  }
   if(length(out_valnames)==0) {
-    out_dt_tmp[,(out_colnames):=factor(rep(NA, nrow(in_dt)), levels = out_factor)]
+    out_dt_tmp[,(out_colnames):=val_template]
   } else {
     for(i in seq_along(out_colnames)) {
-      out_dt_tmp[,(out_colnames[[i]]):=factor(rep(NA, nrow(in_dt)), levels = out_factor)]
+      out_dt_tmp[,(out_colnames[[i]]):=val_template]
       out_dt_tmp[,(out_valnames[[i]]):=0L]
     }
   }
@@ -340,8 +363,13 @@ convert_wide_to_narrow_simple<-function(in_dt, in_colnames_one_cat, in_colnames_
     l<-out_dt_list[[rownr]]
     for(col_nr in as.integer(seq_along(l))) {
       factor_id<-names(l)[[col_nr]]
-      factor_nr<-which(out_factor==factor_id)
-      data.table::set(out_dt_tmp, rownr, out_colnames[[col_nr]], factor_id)
+      factor_nr<-which(out_factor_labels==factor_id)
+      if(!is.null(names(out_factor))) {
+        factor_nr<-out_factor[[factor_nr]]
+        data.table::set(out_dt_tmp, rownr, out_colnames[[col_nr]], factor_nr)
+      } else {
+        data.table::set(out_dt_tmp, rownr, out_colnames[[col_nr]], factor_id)
+      }
       if(length(out_valnames)==0) {
         if(l[[col_nr]]>1) {
           reportClass$add_element(type = cat_dup_type, case = rownr)
@@ -386,6 +414,8 @@ convert_wide_to_narrow<-function(in_dt, in_colnames_one_cat_array, in_colnames_o
 
 }
 
+#TODO: "Y" i "N" na końcu determinuje, czy dany doktor wydał diagnozę. Należy tą funkcję poprawić tak, aby
+#dodawały się "y" i "n" do kolumny, czy zrobił. Jeśli nie ma "y" lub "n", to należy do tej kolumny wpisać brak danych
 convert_specialist<-function(in_char, colname, out_factor, reportClass, type, flag_return_other=FALSE, other_char=NULL) {
   pars<-list('General Practitioner'=c('GP','general practicioner','general pracitioner','general and familiar medicine (gp)',
                                       'general practioner', 'general practicer', 'practitioner', 'family doctor', 'PRACTİTİONER',
@@ -530,7 +560,7 @@ convert_manual_text_old<-function(in_char, colname, out_factor, factor_dict=list
       reportClass$add_element(type=type, case=which_cases, var = colname, par1=m)
     }
   } else {
-    broswer()
+    browser()
   }
   return(out_factor)
 }
@@ -563,7 +593,7 @@ convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), 
       not_matched<-ans$not_matched
     }
   } else {
-    broswer()
+    browser()
   }
   return(list(var=out_factor, not_matched=not_matched))
 }
@@ -638,7 +668,7 @@ disease_in_family<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_d
   convert_wide_to_narrow_simple(in_dt = in_dt, in_colnames_one_cat = in_colnames[2:7],
                                 in_colnames_other_cat = in_colnames[seq(8, length(in_colnames))], reportClass = reportClass,
                                 in_colnames_one_cat_factor = c('Mother', 'Father', 'Brother', 'Homozygous twin', 'Sister', 'Homozygous twin'),
-                                out_dt = out_dt, out_factor = names(danesurowe::GetLevels(out_dt[[out_colnames[[1]] ]])), out_colnames = out_colnames,
+                                out_dt = out_dt, out_factor = danesurowe::GetLevels(out_dt[[out_colnames[[1]] ]]), out_colnames = out_colnames,
                                 factor_dic=list('uncle'='Uncle unknown line', 'yes'='!', 'no'='!', 'yes, sister'='Sister',
                                                 'uncle (brother of father)'='Uncle paternal',
                                                 'grandmother (questionable )'='Grandmother unknown line',
@@ -893,7 +923,7 @@ specialist<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, r
   #Do nothing
   for(spec_nr in seq_along(in_colnames)) {
     in_colname<-in_colnames[[spec_nr]]
-    ans<-convert_specialist(in_char = in_dt[[in_colname]], colname = in_colname, out_factor = out_dt[[out_colnames[[2]]]],
+    ans<-convert_specialist(in_char = in_dt[[in_colname]], colname = in_colname, out_factor = out_dt[[out_colnames[[(spec_nr-1)*4+2]]]],
                                   reportClass = reportClass, type = 'specialist', flag_return_other=TRUE)
     spec_fact<-ans$factor_out
     other_out<-ans$other_out
@@ -949,29 +979,34 @@ to_factor<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, re
   return(out_dt)
 }
 
-to_integer<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
-  if(is.na(par)){
-    par<-''
-  }
-  if(length(in_colnames)>1) {
-    browser()
-  }
-  if(length(out_colnames)>1) {
-    browser()
-  }
+conv_to_integer<-function(var_in, var_name, reportClass, type='to_integer', par=character(0)) {
+  if('character' %in% class(var_in)) {
+    var_in[var_in=='NA']<-NA
+    where_repl<-stringr::str_detect(var_in, stringr::regex('^-?\\d*,\\d*$'))
+    where_repl[is.na(where_repl)]<-FALSE
+    if(sum(where_repl)>0) {
+      var_in[where_repl]<-stringr::str_replace(var_in[where_repl], pattern = stringr::fixed(','), replacement = '.')
+    }
+    nas<-is.na(var_in)
 
+    num_nas<-is.na(var_num)
 
-  var_in<-in_dt[[in_colnames]]
-  var_in[var_in=='NA']<-NA
-  where_repl<-stringr::str_detect(var_in, stringr::regex('^-?\\d*,\\d*$'))
-  where_repl[is.na(where_repl)]<-FALSE
-  if(sum(where_repl)>0) {
-    var_in[where_repl]<-stringr::str_replace(var_in[where_repl], pattern = stringr::fixed(','), replacement = '.')
+    nans<-setdiff(which(num_nas), which(nas))
+    if(length(nans)>0) {
+      browser()
+      if(par=='NaN' || par=='NaN,Nint' || par=='NaN,Int') {
+        #do nothing. NAs already inserted
+      } else if (par%in%c('','Nint','Int')) {
+        var_in[nans]
+        browser() #There are some non-numeric cases.
+      } else {
+        browser() #Unkown par
+      }
+    }
+  } else {
+    num_nas<-integer(0)
   }
-  nas<-is.na(var_in)
-
   var_num<-suppressWarnings(as.numeric(var_in))
-  num_nas<-is.na(var_num)
   var_out<-as.integer(var_num)
   num_nint<-(var_out != var_num)
   num_nint[is.na(num_nint)]<-FALSE
@@ -979,20 +1014,7 @@ to_integer<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, r
     browser()
     which_nint<-which(num_nint)
     for(i in seq_along(which_nint)) {
-      reportClass$add_element(type = 'to_integer', case = which_nint[[i]], var = in_colnames, par1=var_in[[i]])
-    }
-  }
-
-  nans<-setdiff(which(num_nas), which(nas))
-  if(length(nans)>0) {
-    browser()
-    if(par=='NaN' || par=='NaN,Nint' || par=='NaN,Int') {
-      #do nothing. NAs already inserted
-    } else if (par%in%c('','Nint','Int')) {
-      var_in[nans]
-      browser() #There are some non-numeric cases.
-    } else {
-      browser() #Unkown par
+      reportClass$add_element(type = 'to_integer', case = which_nint[[i]], var = var_name, par1=var_in[[i]])
     }
   }
   num_nint[num_nas]<-FALSE
@@ -1007,6 +1029,28 @@ to_integer<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, r
       browser()
     }
   }
+  return(var_out)
+}
+
+to_integer<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+  if(is.na(par)){
+    par<-''
+  }
+  if(length(in_colnames)>1) {
+    browser()
+  }
+  if(length(out_colnames)>1) {
+    browser()
+  }
+
+
+  var_in<-in_dt[[in_colnames]]
+  var_in[var_in=='NA']<-NA
+  if('lp'%in% in_colnames) {
+#    browser()
+  }
+  var_out<-conv_to_integer(var_in = var_in, var_name = in_colnames, reportClass = reportClass, type = type, par = par)
+
   var_target<-out_dt[[out_colnames]]
   var_out<-danesurowe::copy_obj_attributes(obj_source = var_target, obj_dest = var_out)
   out_dt[,(out_colnames):=var_out]
@@ -1071,6 +1115,29 @@ to_numeric<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, r
   return(out_dt)
 }
 
+conv_to_Date_from_serial<-function(var_in, var_name, reportClass, type, par='1927-2019') {
+  range<-as.numeric(stringr::str_split(par, pattern="-")[[1]])
+
+  var_target<-as.Date(rep(NA_real_, length(var_in)), origin='1899-12-30')
+  var_num<-conv_to_numeric(var_in = var_in, var_name = var_name, type = 'Date_by_serial_numeric', reportClass = reportClass)
+  low_range<-which(var_num>=range[[1]] & var_num<=range[[2]])
+  high_range<-setdiff(seq_along(var_in), c(low_range, which(is.na(var_num))))
+  low_range_int<-low_range[var_num[low_range]%%1==0]
+  low_range_frac<-setdiff(low_range, low_range_int)
+
+  var_target[low_range_frac]<-as.Date(lubridate::date_decimal(var_num[low_range_frac]))
+  var_target[low_range_int]<-as.Date(lubridate::date_decimal(var_num[low_range_int]+0.5))
+  var_high_range<-as.Date(var_num[high_range], origin = "1899-12-30")
+  bad_dates<-lubridate::decimal_date(var_high_range)
+  bad_dates<-high_range[which(bad_dates<range[[1]] | bad_dates>range[[2]])]
+  for (i in bad_dates) {
+    reportClass$add_element(type = "Date_by_serial_range", case = i, var = var_name, par1 = var_in[[i]])
+  }
+  var_target[high_range]<-var_high_range
+  var_target[bad_dates]<-NA
+  return(var_target)
+}
+
 Date_by_serial<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
   if(length(in_colnames)>1) {
     browser()
@@ -1085,25 +1152,7 @@ Date_by_serial<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debu
 #  browser()
 
 
-  var_target<-out_dt[[out_colnames]]
-  var_num<-conv_to_numeric(var_in = in_dt[[in_colnames]], var_name = in_colnames, type = 'Date_by_serial_numeric', reportClass = reportClass)
-  low_range<-which(var_num>=range[[1]] & var_num<=range[[2]])
-  high_range<-setdiff(seq_along(var_target), c(low_range, which(is.na(var_num))))
-  low_range_int<-low_range[var_num[low_range]%%1==0]
-  low_range_frac<-setdiff(low_range, low_range_int)
-
-  var_target[low_range_frac]<-as.Date(lubridate::date_decimal(var_num[low_range_frac]))
-  var_target[low_range_int]<-as.Date(lubridate::date_decimal(var_num[low_range_int]+0.5))
-  var_high_range<-as.Date(var_num[high_range], origin = "1899-12-30")
-  bad_dates<-lubridate::decimal_date(var_high_range)
-  bad_dates<-high_range[which(bad_dates<range[[1]] | bad_dates>range[[2]])]
-  for (jcolname in in_colnames) {
-    for (i in bad_dates) {
-      reportClass$add_element(type = "Date_by_serial_range", case = i, var = jcolname, par1=in_dt[[jcolname]][[i]])
-    }
-  }
-  var_target[high_range]<-var_high_range
-  var_target[bad_dates]<-NA
+  var_target<-conv_to_Date_from_serial(var_in = in_dt[[in_colnames]], var_name = in_colnames, type ='Date_by_serial_numeric', reportClass = reportClass)
 
   out_dt[,(out_colnames):=var_target]
 

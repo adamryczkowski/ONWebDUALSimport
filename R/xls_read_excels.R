@@ -1,3 +1,22 @@
+xlsdict<-list(
+  'ANTA patients all 111.xlsx'='ANTA_A',
+  'Excel questionnaire_ANTControl_2017(Warsaw).xlsx'='ANTA_C',
+
+  'Patienten Tabelle 1-01-2017.xlsx'='HANN_A',
+  'Patienten Tabelle 2.xlsx'='HANN_A',
+  'Kontrollpersonen Tabelle 1.xlsx'='HANN_C',
+  'Kontrollpersonen Tabelle 2.xlsx'='HANN_C',
+
+  'Excel questionnaire_20160902 Jena.xlsx'='JENA_A',
+  'Excel questionnaire Jena Patient_20170531.xlsx'='JENA_A',
+  'Excel questionnaire Jena Control_20170531.xlsx'='JENA_C',
+
+  'als (2)_Lisbon reviewed_marta_3april.xlsm'='LISB_A',
+  'LISB (2-Control)_Marta.xlsm'='LISB_C',
+
+  'OnWeb WARS patients.xlsx'='WAWA_A',
+  'OnWeb WAWA control 10.01.2017_FIX.xlsx'='WAWA_C')
+
 read_ANTA<-function(prefix, flag_control=FALSE) {
 	if(flag_control) {
 		ref_file <- file.path(prefix, 'control/ANTA/Excel questionnaire_ANTControl_2017(Warsaw).xlsx')
@@ -56,10 +75,12 @@ read_LISB<-function(prefix, flag_control=FALSE) {
 	if(flag_control) {
 		ref_file <- file.path(prefix, 'control/LISB/LISB (2-Control)_Marta.xlsm')
 		ans<-danesurowe::readDaneSurowe(ref_file)
+		ans$filename<-ref_file
 		return(convertLISB(ans, flag_control))
 	} else {
 		ref_file <- file.path(prefix, 'ALS/LISB/als (2)_Lisbon reviewed_marta_3april.xlsm')
 		ans<-danesurowe::readDaneSurowe(ref_file)
+		ans$filename<-ref_file
 		return(convertLISB(ans, flag_control))
 	}
 }
@@ -260,7 +281,9 @@ joinExcels<-function(prefix, flag_control)  {
 	if(length(setdiff(colnames(HANNdb),colnames(db)))>0) {
 		browser()
 	}
-	db<-rbind(db, HANNdb)
+
+	db<-join_dbs(webdb = db, xlsdb = HANNdb, reference_db = db)
+	#db<-rbind(db, HANNdb)
 	db<-danesurowe::copy_dt_attributes(ANTAdb, db)
 
 	JENAdb<-read_excel_db(prefix=prefix, src = 'JENA', flag_control = flag_control)
@@ -271,7 +294,8 @@ joinExcels<-function(prefix, flag_control)  {
 		browser()
 	}
 
-	db<-rbind(db, JENAdb)
+#	db<-rbind(db, JENAdb)
+	db<-join_dbs(webdb = db, xlsdb = JENAdb, reference_db = db)
 	db<-danesurowe::copy_dt_attributes(ANTAdb, db)
 
 
@@ -282,7 +306,8 @@ joinExcels<-function(prefix, flag_control)  {
 	if(length(setdiff(colnames(LISBdb),colnames(db)))>0) {
 		browser()
 	}
-	db<-rbind(db, LISBdb)
+	db<-join_dbs(webdb = db, xlsdb = LISBdb, reference_db = db)
+#	db<-rbind(db, LISBdb)
 	db<-danesurowe::copy_dt_attributes(ANTAdb, db)
 
 	WAWAdb<-read_excel_db(prefix=prefix, src = 'WAWA', flag_control = flag_control)
@@ -292,7 +317,8 @@ joinExcels<-function(prefix, flag_control)  {
 	if(length(setdiff(colnames(WAWAdb),colnames(db)))>0) {
 		browser()
 	}
-	db<-rbind(db, WAWAdb)
+#	db<-rbind(db, WAWAdb)
+	db<-join_dbs(webdb = db, xlsdb = WAWAdb, reference_db = db)
 	db<-copy_dt_attributes(LISBdb, db)
 
 	return(db)
@@ -301,7 +327,7 @@ joinExcels<-function(prefix, flag_control)  {
 # db_als<-joinExcels(FALSE)
 # db_ctrl<-joinExcels(TRUE)
 
-joinALS_Ctrl<-function(db_als, db_ctrl, als_control_dic) {
+joinALS_Ctrl<-function(db_als, db_ctrl, als_control_dic, reportClass) {
   if(is.null(db_ctrl)) {
     db_ctrl<-joinExcels(TRUE)
     db_ctrl<-convert_Numeric_to_Date(db_ctrl, '^q_[45]$')
@@ -378,7 +404,9 @@ joinALS_Ctrl<-function(db_als, db_ctrl, als_control_dic) {
     db_ctrl$q_0[which(db_ctrl$q_0 %in% conflicting_ids)]<-paste0(conflicting_ids,'_C')
   }
 
-  db<-rbind(db_als, db_ctrl, fill=TRUE)
+  db<-join_dbs(webdb = db_als, xlsdb = db_ctrl, reference_db = db_als, reportClass = reportClass)
+
+  #db<-rbind(db_als, db_ctrl, fill=TRUE)
   db$centr_id<-findid(db$q_0)[,2]
   db<-danesurowe::copy_dt_attributes(db_als, db)
   return(db)

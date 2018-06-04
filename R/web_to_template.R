@@ -1,8 +1,8 @@
 
 
 #Loads the template with the database read from the web, using the web_xls_dic.xlsx dictionary
-fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA_character_){
-  reportClass<-dbcasereport::ReportClass$new()
+fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA_character_, reportClass){
+  checkmate::expect_class(reportClass, 'ReportClass')
   if(!is.na(rownames_colname) && rownames_colname %in% colnames(in_dt)) {
     reportClass$set_case_names(as.character(in_dt[[rownames_colname]]))
   }
@@ -78,9 +78,9 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA
 		  }
 		  next_i <- i + 1
 		}
-		# if(identical(out_colnames, 'q_143a')) {
-		#   browser()
-		# }
+		if(identical(out_colnames, 'q_4')) {
+		  browser()
+		}
 
 		cat(paste0("Interpreting row ", i, ": (",
 		           paste0(in_colnames, collapse=', '), ")->(",
@@ -178,15 +178,16 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA
 }
 
 factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug, reportClass) {
-#  if(out_varname=='q_16g') {
-#    browser()
-#  }
+ if(out_varname=='q_87b') {
+#   browser()
+ }
   out_varname<-out_varname[[1]]
   var_from<-in_dt[[in_varname]]
   var_target<-out_dt[[out_varname]]
   dic_from<-sort(unique(as.integer(var_from)))
 	dic_from_left<-dic_from
 	dic_to<-dic_from
+	flags_to_report<-rep(FALSE, length(dic_from))
 
 	# if('integer' %in% class(var_from) || 'numeric' %in% class(var_from)) {
 	# 	browser()
@@ -211,9 +212,10 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 
 	for(par in pars) {
 		if(stringr::str_detect(par, pattern=stringr::fixed('->'))) {
-			m<-stringr::str_match(par, pattern=stringr::regex('^(.*)->(.*)$'))
+			m<-stringr::str_match(par, pattern=stringr::regex('^(.*)->(!?)([^!]*)$'))
 			par_from<-as.integer(m[[2]])
-			par_to<-m[[3]]
+			to_report<-m[[3]]=='!'
+			par_to<-m[[4]]
 			if(is.na(par_from)) {
 				browser()
 			}
@@ -236,8 +238,13 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 					browser()
 					#This was already used!
 				}
-				dic_to[[pos]]<-par_to_value
-				dic_from_left[[pos]]<-NA #Mark, that this value is taken
+				if(par_to!='') {
+				  dic_to[[pos]]<-par_to_value
+				  dic_from_left[[pos]]<-NA #Mark, that this value is taken,
+				} else {
+				  browser() #Not tested path of '1->!'. Intention is not to replace anything, but only mark '1' as flagged. Probably works, but never tested.
+				}
+				flags_to_report[[pos]]<-to_report
 			} else {
 				if(do_debug) {
 					browser() #It seems, that there are no cases with par_from. No need to do anything.
@@ -275,8 +282,11 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 		var_out<-as.numeric(var_from)
 	}
 	for(i in seq_along(dic_from)) {
-		if(!identical(dic_from[[i]], dic_to[[i]])) {
-			var_out[as.integer(var_from)==dic_from[[i]] ]<-dic_to[[i]]
+	  if(flags_to_report[[i]]) {
+	    reportClass$add_element(type='factor_by_value', case=which(as.integer(var_from)==dic_from[[i]]), var=in_varname, par1=out_varname)
+	  }
+	  if(!identical(dic_from[[i]], dic_to[[i]])) {
+		  var_out[as.integer(var_from)==dic_from[[i]] ]<-dic_to[[i]]
 		}
 	}
 
@@ -321,9 +331,11 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 
 	  browser()
 	}
-	var_out<-danesurowe::copy_obj_attributes(obj_source = var_target, obj_dest = var_out)
-	attr(var_out, 'levels')<-attr(var_target, 'levels')
-	attr(var_out, 'labels')<-attr(var_target, 'labels')
+	attributes(var_target)<-attributes(var_out)
+	# var_out<-danesurowe::copy_obj_attributes(obj_source = var_target, obj_dest = var_out)
+	# attr(var_out, 'levels')<-attr(var_target, 'levels')
+	# attr(var_out, 'labels')<-attr(var_target, 'labels')
+	# attr(var_out, 'class')<-attr(var_target, 'class')
 
   out_dt[,(out_varname):=var_out]
 	# } else {
@@ -339,7 +351,7 @@ factor_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_de
 }
 
 yesno_by_integer<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug, reportClass) {
-  browser()
+#  browser()
   var_from<-in_dt[[in_varname]]
 #  var_target<-out_dt[[out_varname]]
 
@@ -353,7 +365,7 @@ yesno_by_integer<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_d
 
 
 Date_by_value<-function(in_dt, in_varname, out_dt, out_varname, pars_in, do_debug, reportClass) {
-  browser()
+  #browser()
   var_from<-in_dt[[in_varname]]
   var_target<-out_dt[[out_varname]]
   dt<-lubridate::parse_date_time(var_from, 'Y!m!*dH!M!S!z!*')
