@@ -327,7 +327,7 @@ joinExcels<-function(prefix, flag_control)  {
 # db_als<-joinExcels(FALSE)
 # db_ctrl<-joinExcels(TRUE)
 
-joinALS_Ctrl<-function(db_als, db_ctrl, als_control_dic, reportClass) {
+joinALS_Ctrl<-function(db_als, db_ctrl, als_control_dic, reference_db, reportClass) {
   if(is.null(db_ctrl)) {
     db_ctrl<-joinExcels(TRUE)
     db_ctrl<-convert_Numeric_to_Date(db_ctrl, '^q_[45]$')
@@ -404,7 +404,7 @@ joinALS_Ctrl<-function(db_als, db_ctrl, als_control_dic, reportClass) {
     db_ctrl$q_0[which(db_ctrl$q_0 %in% conflicting_ids)]<-paste0(conflicting_ids,'_C')
   }
 
-  db<-join_dbs(webdb = db_als, xlsdb = db_ctrl, reference_db = db_als, reportClass = reportClass)
+  db<-join_dbs(webdb = db_als, xlsdb = db_ctrl, reference_db = reference_db, reportClass = reportClass)
 
   #db<-rbind(db_als, db_ctrl, fill=TRUE)
   db$centr_id<-findid(db$q_0)[,2]

@@ -79,7 +79,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA
 		  next_i <- i + 1
 		}
 		if(identical(out_colnames, 'q_4')) {
-		  browser()
+		  #browser()
 		}
 
 		cat(paste0("Interpreting row ", i, ": (",
@@ -119,15 +119,19 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA
 		} else {
 		  if(length(out_colnames)==1 && length(in_colnames)==1) {
 		    var<-in_dt[[in_colnames]]
-		    in_type<-danesurowe::class2vartype_str(class(var))
-		    out_type<-danesurowe::class2vartype_str(class(out_dt[[out_colnames]]))
+		    in_type<-danesurowe::class2vartype(var)
+		    out_type<-danesurowe::class2vartype(out_dt[[out_colnames]])
 		    if(out_type != in_type) {
-		      type_comb<-paste0(out_type, in_type)
+		      type_comb<-paste0(in_type, out_type)
 		      #cat(paste0(type_comb, '\n'))
-		      if(type_comb=='SN') {
+		      if(type_comb=='NS') {
 		        var2<-as.numeric(stringr::str_replace(stringr::str_replace_all(var, ',', '.'),
 		                                              pattern = stringr::regex('^NA$'), NA_character_))
-		      } else if(type_comb=='FS') {
+		      } else if(type_comb=='TD') {
+		        var2<-as.Date(var)
+		      } else if(type_comb=='DT') {
+		        var2<-as.POSIXct.Date(var)
+		      } else if(type_comb=='SF') {
 		        uvalues<-setdiff(unique(var), c(NA, 'NA'))
 		        a<-setdiff(uvalues, levels(out_dt[[out_colnames]]))
 		        if(length(a)>0) {
@@ -143,7 +147,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA
 		          }
 		        }
 		        var2<-as.integer(var)
-		      } else if (type_comb=='NS') {
+		      } else if (type_comb=='SN') {
 		        var2<-as.character(var)
 		      } else if (out_type %in% c('I')) {
 		        var2<-suppressWarnings(as.integer(var))
@@ -152,6 +156,7 @@ fill_template<-function(in_dt, out_dt, dict, debug_n=100000, rownames_colname=NA
 		      }
 		      var<-var2
 		    }
+		    in_type<-danesurowe::class2vartype_str(class(var))
 		    if(in_type != out_type) {
 		      browser()
 		    } else {

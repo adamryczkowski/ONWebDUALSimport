@@ -13,6 +13,7 @@ NULL
     onwebduals.webdocs="app_dictionaries.xlsx", #documentation of the web database. Information about mapping dictionaries to questions
     onwebduals.web2xls_dic="web_xls_dic.xlsx", #Mapping between column names in web database and the reference database. Information about simple recodings
     onwebduals.xls2xls_dic="xls_xls_dic.xlsx", #Mapping between column names in web database and the reference database. Information about simple recodings
+    onwebduals.xlstemplate="XlsTemplate.xlsm", #Reference common format for all databases. Only structure, no cases.
     onwebduals.dbtemplate="CommonRawTemplate.xlsm", #Reference common format for all databases. Only structure, no cases.
     onwebduals.dbanalysis="AnalysisTemplate.xlsm", #Reference common format for all databases. Only structure, no cases.
     onwebduals.als_ctrl_dic="als_ctrl_dic.xlsx" #Dictionary that mapps question names in the control group to question names in the ALS group
@@ -165,7 +166,9 @@ importXLSDatabases<-function(filename=NULL, path_prefix=NULL, flag_ALSFRS_as_int
     reportClass$add_element(case = poses_als[[i]], var = 'q_0', type = 'id_duplicates', par1=poses_ctrl[[i]])
   }
 
-  joined_db<-joinALS_Ctrl(db_als = db_als, db_ctrl = db_ctrl, als_ctrl_dic, reportClass = reportClass)
+
+  reference_db<-read_ref(reference_source = system.file(getOption('onwebduals.xlstemplate'),package='ONWebDUALSimport'), flag_ALSFRS_as_integers = flag_ALSFRS_as_integers)
+  joined_db<-joinALS_Ctrl(db_als = db_als, db_ctrl = db_ctrl, als_control_dic =  als_ctrl_dic,reference_db=reference_db,  reportClass = reportClass)
 
 
   als_ctrl_dic_filename<-system.file(getOption('onwebduals.als_ctrl_dic'),package='ONWebDUALSimport')
@@ -207,7 +210,7 @@ importXLSDatabasesAndConvert<-function(filename=NULL, path_prefix=NULL, flag_ALS
   xlsdb_copy<-data.table::copy(xlsdb)
   ref_copy<-data.table::copy(ref)
 
-  ans<-fill_template(in_dt = xlsdb_copy, out_dt = ref_copy, dict = dict, rownames_colname = 'q_0')
+  ans<-fill_template(in_dt = xlsdb_copy, out_dt = ref_copy, dict = dict, rownames_colname = 'q_0', reportClass = reportClass)
   xlsdb2<-ans$dt
 
   return(xlsdb2)
@@ -332,7 +335,7 @@ join_dbs<-function(webdb, xlsdb, reference_db=NULL, reportClass, type='join_db')
     var1<-webdb[[colname]]
     var2<-xlsdb[[colname]]
     var<-joined_df[[colname]]
-    if(class(var1)!=class(var)) {
+    if(paste(sort(class(var1)), collapse = ' ')!=paste(sort(class(var)), collapse = ' ')) {
       if('integer' %in% class(var1) & 'factor' %in% class(var) ) {
         attributes(var1)<-attributes(var)
       } else if('numeric' %in% class(var1) & 'factor' %in% class(var) ) {
@@ -379,12 +382,19 @@ join_dbs<-function(webdb, xlsdb, reference_db=NULL, reportClass, type='join_db')
         var1[[1]]<-NA
         var1<-rep(var1[[1]], nrow(webdb))
       } else if ( 'factor' %in% class(var1) && 'character' %in% class(var)) {
-          var1<-as.character(var1)
+        var1<-as.character(var1)
+      } else if ( 'Date' %in% class(var1) && 'POSIXct' %in% class(var)) {
+        var1<-as.POSIXct(var1)
+      } else if ( 'numeric' %in% class(var1) && 'character' %in% class(var)) {
+        var1<-as.character(var1)
+      } else if ( 'numeric' %in% class(var1) &&  'POSIXct' %in% class(var)) {
+        #        browser()
+        var1<-as.POSIXct(conv_to_Date_from_serial(var_in = var1, var_name = colname, reportClass = reportClass))
       } else {
         browser()
       }
     }
-    if(class(var2)!=class(var)) {
+    if(paste(sort(class(var2)), collapse = ' ')!=paste(sort(class(var)), collapse = ' ')) {
       if("NULL" %in% class(var2)) {
         var2<-var[1:2]
         var2[[1]]<-NA
@@ -401,12 +411,21 @@ join_dbs<-function(webdb, xlsdb, reference_db=NULL, reportClass, type='join_db')
         }
         attributes(var2)<-attributes(var)
       } else if ( 'integer' %in% class(var2) && 'numeric' %in%class(var)) {
+        #browser()
         var2<-conv_to_integer(var_in = var2, var_name = colname, reportClass = reportClass, type = 'to_integer', par = '')
       } else if ( 'numeric' %in% class(var2) && 'integer' %in%class(var)) {
         var2<-as.numeric(var2)
-      } else if ( 'numeric' %in% class(var2) && 'Date' %in%class(var)) {
-        browser()
+      } else if ( 'numeric' %in% class(var2) &&  'Date' %in%class(var)) {
         var2<-conv_to_Date_from_serial(var_in = var2, var_name = colname, reportClass = reportClass)
+      } else if ( 'numeric' %in% class(var2) &&  'POSIXct' %in% class(var)) {
+#        browser()
+        var2<-as.POSIXct(conv_to_Date_from_serial(var_in = var2, var_name = colname, reportClass = reportClass))
+      } else if ( 'Date' %in% class(var2) && 'POSIXct' %in% class(var)) {
+        var2<-as.POSIXct(var2)
+      } else if ( 'numeric' %in% class(var2) && 'character' %in% class(var)) {
+        var2<-as.character(var2)
+      } else if ( 'factor' %in% class(var2) && 'character' %in% class(var)) {
+        var2<-as.character(var2)
       } else {
 
         browser()

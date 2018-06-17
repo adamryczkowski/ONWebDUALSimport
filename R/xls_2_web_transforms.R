@@ -564,6 +564,7 @@ convert_manual_text_old<-function(in_char, colname, out_factor, factor_dict=list
   }
   return(out_factor)
 }
+
 #Function that takes character vector, empty factor and optionally dictionary of substutitions to convert a character string into a factor.
 #Values "NA" are converted into a NA silently
 convert_manual_text<-function(in_char, colname, out_factor, factor_dict=list(), reportClass, type, str_regex_suffix='', str_regex_prefix='') {
@@ -714,21 +715,25 @@ disease_in_family<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_d
 }
 
 disease_in_family_other<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+  browser()
   #Do nothing
   out_dt
 }
 
 famlily_death<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+  browser()
   #Do nothing
   out_dt
 }
 
 birth_order<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+  browser()
   #Do nothing
   out_dt
 }
 
 sport_activity<-function(in_dt, in_colnames, out_dt, out_colnames, par,  do_debug, reportClass) {
+  browser()
   #Do nothing
   out_dt
 }
@@ -988,6 +993,7 @@ conv_to_integer<-function(var_in, var_name, reportClass, type='to_integer', par=
       var_in[where_repl]<-stringr::str_replace(var_in[where_repl], pattern = stringr::fixed(','), replacement = '.')
     }
     nas<-is.na(var_in)
+    var_num<-suppressWarnings(as.numeric(var_in))
 
     num_nas<-is.na(var_num)
 
@@ -1005,8 +1011,8 @@ conv_to_integer<-function(var_in, var_name, reportClass, type='to_integer', par=
     }
   } else {
     num_nas<-integer(0)
+    var_num<-suppressWarnings(as.numeric(var_in))
   }
-  var_num<-suppressWarnings(as.numeric(var_in))
   var_out<-as.integer(var_num)
   num_nint<-(var_out != var_num)
   num_nint[is.na(num_nint)]<-FALSE

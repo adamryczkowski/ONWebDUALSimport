@@ -10,7 +10,7 @@ read_ref<-function(row_length=0, reference_source=NULL, flag_ALSFRS_as_integers=
     reference_source<-system.file(getOption('onwebduals.dbtemplate'),package='ONWebDUALSimport')
   }
 #	debugonce(danesurowe::readDaneSurowe4)
-	tmpl<-danesurowe::readDaneSurowe4(reference_source)
+	tmpl<-danesurowe::readDaneSurowe(reference_source)
 	template<-gen_blank_df(tmpl, row_length)
 	# template<-tmpl[integer(0),]
 	# template<-danesurowe::copy_dt_attributes(dt_source = tmpl, dt_dest=template)
