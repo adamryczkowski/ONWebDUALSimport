@@ -1,0 +1,112 @@
+
+Plan pracy moich analiz ONWebDUALS. Czas pracy jest relatywny i orientacyjny, bo zawsze jest go trudno ocenić. Szczególnie trudno jest określić czas testowania i naprawiania błędów, który może trwać dłużej, niż samo pisanie kodu. Nie potrafię ocenić, ile czasu będę rozwiązywał błędy podczas testowania obliczeń.
+
+Koszty oceniam jako coś proporcjonalnego do iloczynu pracy przez efekt dla Pani. Dlatego bibliotekę objectstorage wyceniam na 0zł, mimo że w sumie pisałem ją 2 tygodnie, bo przy aktualnych rozmiarach bazy danych nie dodaje nic znaczącego do projektu. Natomiast bibliotekę relationshipMatrix, która jest już gotowa (zacząłem pisać jeszcze latem) wyceniam na 3000zł, bo przyspiesza i znacząco ułatwia komunikację planu analiz (wymagania Mamede to około tysiąc obliczeń). Ponadto, gdy ją projektowałem, uwzględniałem wymagania naszego projektu. Podobnie depwalker oceniłem relatywnie niewysoko (względem czasu pracy nad nim). Rola biblioteki dla projektu polega na kilkudziesięciokrotnym zredukowaniu czasu przeliczania analiz przy każdej z poprawek/rozwiązanym błędzie w kodzie.
+
+
+Razem całość wyceniam na 22 500zł na rękę dla mnie oraz 5000 za analizę regresji. Dodanie do analizy grupy kontrolnej podniesie koszt o 1000zł bez regresji lub 2000zł z regresją. 
+
+Ceny nie obejmują podatków.
+
+# Import danych
+
+1. Import danych w formacie Web (gotowe)
+2. Import danych z formatów Excelowych (gotowe)
+3. Scalenie obu formatów (gotowe)
+   Istnieje 6 klas pytań, wg. różnego stopnia komplikacji konwersji ich z wersji excelowej:
+   1. Pytania nie wymagające żadnych starań (74 zmienne)
+   2. Pytania słownikowe, być może wymagające rekodowania poziomów (201 zmienne)
+   3. Pytania tekstowe, które mają być zamienione na pytania słownikowe (9 zmiennych)
+   4. Pytania jednokrotnego wyboru, które są zakodowane jako pytania wielokrotnego wyboru (15 grup zmiennych)
+   5. Szczególne przypadki, które mogą być tłumaczone automatycznie:
+      * pattern_of_spreading (pyt. `q_48`)
+      * disease_in_family (pyt. `q_100 - 105`)
+      * death_in_family (pyt. `q_106`)
+      * birth_order (`q_107a`, `q_108a`, `q_110a1`)
+      * number of children (`q_110a`)
+      * sport_activity (pyt. `q_112` - `q_113`)
+      * specialist (pyt. `q_154`)
+   6. Szczególne przypadki, których nie da się przetłumaczyć automatycznie:
+      * `q_88e` (Mean number of packs/day)
+      * `q_98_1` (Abnormal C9orf72 repeat-expansion)
+ 
+   #### zrobione:
+   * Dla klasy 3., 4. oraz dla każdego przypadku z klasy 5. trzeba napisać procedurę konwertującą.
+   * Napisać funkcjonalność umożliwiającą każdej z procedur konwertujących wysyłać informacje potrzebne do wygenerowania raportu z przypadkami wymagającymi interwencji konsorcjantów.
+   * Napisać parser tej informacji i generator czytelnego dla człowieka raportu scalania.
+   * Dla każdej instancji klasy 3. i 6. potrzeba stworzyć konwerter, który będzie wykorzystywał dodatkowe informacje podane przez użytkownika (np. „ul” to są „µl”) oraz      jakiś interfejs wpisywania tych informacji (prawdopodobnie jako arkusz(e) Excela).
+ 
+   **Czas pracy: 1 tydzień. Koszt: 2500 zł (duża część funkcjonalności już jest napisana i opłacona)**
+
+
+# Dokończenie przygotowania bibliotek do wykonania analiz
+
+4. Napisanie macierzy analiz statystycznych do policzenia i zilustrowania wymaganych przez Mamede zależności. Będę w tym celu wykorzystywał już napisaną przeze mnie bibliotekę [relationshipMatrix](https://github.com/adamryczkowski/relationshipMatrix) **Czas pracy: <1 dzień**
+7. Użycie własnego ekosystemu 4 bibliotek do wykonania samych analiz. Nie wszystkie biblioteki są w tej chwili gotowe.
+   1. Biblioteka [objectStorage](https://github.com/adamryczkowski/objectstorage) odpowiedzialna za wydajne zapisywanie, nadpisywanie i pobieranie policzonych olbrzymich obiektów na dysk. (Status: skończona, przetestowana).
+      Ponieważ baza danych wykorzystywana w tym projekcie jest mała, funkcjonalność oferowana przez tą bibliotekę nie jest niezbędna. Jednak biblioteka jest już gotowa oraz
+      zintegrowana do biblioteki depwalker.
+   2. Biblioteka [depwalker](https://github.com/adamryczkowski/depwalker).
+    Pozwala traktować skrypt (np. wykonujący jakąś statystyczną analizę, wykres albo transformację) jako zadanie, dla którego są ściśle zdefiniowane informacje wejściowe (mogą być w formie a) kodu, b) obiektów, c) wyniku działań innego zadania) oraz wyjściowe. Zadania są łączone z innymi zadaniami relacją zależności, tworząc strukturę acyklicznego drzewa. Podczas wykonywania zadań, wyniki tych zadań, które są czasochłonne są cacheowane, aby przyspieszyć ponowne obliczenia. Biblioteka służy do poprawienia wydajności pisania reprodukowalnego kodu obliczeń statystycznych, poprzez zwolnienie użytkownika z kłopotu zapisywania obiektów pośrednich oraz śledzenia ich aktualności i przeliczanie odpowiednich obiektów/wyników na nowo, gdy dane źródłowe (kod, parametry lub baza danych) ulegnie zmianie.
+    **Do zrobienia:** Będę używać wersji 2.0 tej biblioteki, która jeszcze nie jest gotowa - jest w fazie testów i bug fixów. **Czas pracy: 2 tyg. Koszt 2000zł **
+
+   4. Biblioteka [relationshipMatrix](https://github.com/adamryczkowski/relationshipMatrix).
+ 
+      Służy do wygodnego definiowania dużej liczby prostych analiz, pod warunkiem, że analizę można zdefiniować poprzez podanie zmiennej niezależnej, zmiennej zależnej, zmiennej grupującej i filtra. Dodatkowo zamiast zmiennej zależnej lub niezależnej można użyć procedury agregującej, będącej po prostu dowolną statystyką o wartościach liczbowych, np. stosunku kobiet to wszystkich badanych, albo statystyk takich jak np. dymorfizm płciowy. Analizy takich zmiennych są z reguły wykonywane przy pomocy bootstrapu.
+     
+      Biblioteka definiuje wygodny format wejściowy oparty na macierzy zapisanej w arkuszu Excela, umożliwiający w elastyczny sposób zaprogramowanie analiz oraz wygodne podanie dodatkowych parametrów do poszczególnych analiz lub ich grup (np. określających liczbę symulacji bootstrap, albo nazwę rozdziału dokumentu wyjściowego, do którego wynik danej analizy należy wkleić
+     
+      Wewnętrznie biblioteka odczytuje macierz zależności i transformuje ją na zadania, które wykonuje przy pomocy biblioteki depwalker opisanej wcześniej. Nacisk nastawiony jest na szybką generację wyników, szczególnie w przypadku powtórnej generacji po modyfikacji macierzy zależności.
+     
+      Główna funkcjonalność to (poza nadaniem obliczeń powyższej struktury) pedantyczny i pomysłowy (wg. zdania autora) algorytm śledzenia minimalnej liczby parametrów potrzebnych na wygenerowanie każdego z zadań. Dzięki temu, zadanie będzie wykonane ponownie tylko wtedy, gdy zmianie ulegnie taki parametr, który faktycznie jest konsumowany a w przeciwnym razie wczytana będzie wartość poprzednia.
+     
+      Dodatkowo relationshipMatrix udostępnia specjalnie zaimplementowany system zapisu dokumentu, w którym dokument jest złożony jako drzewo obiektów. Każdy obiekt jest zasadniczo jednym z 4 typów: tekst, tabela, wykres oraz rozdział. Rozdział zawiera listę pod-obiektów. Taka reprezentacja pozwala na wygodne dzielenie na kilka raportów i filtrowanie policzonych składników raportu, już po policzeniu analiz, bez konieczności ponownego ich przeliczania.
+     
+    Status: Napisane i przetestowane tak, aby nie używać biblioteki depwalker (która jeszcze nie jest do końca gotowa). ** Koszt: 3000zł **
+
+   4. Biblioteka [yuxiaCharts](https://github.com/adamryczkowski/yuxiaCharts), która implementuję obsługę każdego z typu analiz zdefiniowanego przy użyciu interfejsu relationshipMatrix. To właśnie tu jest zdefiniowany wygląd wykresów i tabelek, które korzystają z interfejsu zapisu do dokumentów z relationshipMatrix. Biblioteka pozwala na tworzenie raportów w dowolnym języku.
+   
+    Status: zaimplementowane i przetestowane 3 typy komórek:
+    * 'boxplot_wyliczany' - analiza, w której jedną zmienną jest agregacja, a drugą zmienną jest zmienna nominalna,
+    * 'crosstab' analiza, w której obie zmienne są nominalne. Wykonywany jest wykres mozaikowy oraz test niezależności Chi2 Pearsona. Obsługiwany jest szczególny przypadek, gdy jedna ze zmiennych jest mierzona na dwóch poziomach. Wówczas wykonana zostanie analiza analogiczna do jedno-zmiennowej regresji logistycznej z wykresem pokazującym logit dla każdego z poziomów drugiej zmiennej niezależnej,
+    * 'boxplot' - analiza, w której jedną zmienną jest zmienna ilościowa (np. wiek pacjenta) a drugą zmienną jest zmienna nominalna. Wykonywany jest test studenta (dla zmiennej nominalnej na 2 poziomach) lub jednoczynnikowa ANOVA.
+   
+    Dodatkowo zaimplementowane, ale nie przetestowane są następujące typy komórek:
+    * 'hexplot' - analiza ilustrująca związek dwóch zmiennych ilościowych w formie wykresu rozrzutu albo tzw. hexplota. Rysowana jest linia trendu loess razem z jej przedziałem ufności. **Czas pracy 1 dzień**
+    * 'nominal_trend' - analiza ilustrująca związek zmiennej wyrażającej moment w czasie ze zmienną nominalną (np. typ fenotypu). Poza wykresem komponentu sezonowego, tworzony jest periodogram (obliczony metodą Daniella) pozwalający na analizę typowych częstości, z jakimi zmieniają się proporcje występowania zmiennej niezależnej nominalnej. **Czas pracy 2 dni**
+    * 'numeric_trend' - analiza związku zmiennej ilościowej ze zmienną wyrażającą moment w czasie. Podobnie jak nominal_trend, rysowany jest wykres komponentu sezonowego. Dodatkowo wykorzystywana jest statystyka Bayesowska do dopasowania modelu y = A + B * sin(fi * czas + przesuniecie_fazowe) + C * czas. **Czas pracy 2 dni**
+    * `XY_wyliczany` - analiza ilustrująca związek zmiennej agregowanej z ilościową. Zbiór jest dzielony na nie za małe i nie za mało liczne odcinki, a następnie dla każdego odcinka liczona jest statystyka agregująca przy pomocy metody boostrap i nanoszone na wykres jest jej wartość wraz z 95% kwantylami. **Czas pracy 1 dzień**
+
+** Koszt: około 1500zł.** W tej cenie będzie dostosowanie użytych przeze mnie metod statystycznych do życzeń konsorcjantów. Spodziewam się tu relatywnie dużo pracy, bo dla 5 zmiennych zależnych (pyt_16a - pyt_16d oraz pyt 17 dwie grupy) oraz ok. 200 zmiennych niezależnych będziemy mieli ok. 1000 analiz - czyli około 2 tysięcy stron raportu... Analizy będą się robiły w 100% automatycznie, ale na pewno będzie dużo okazji do błędów programistycznych, których wyławianie zajmie trochę pracy i czasu.  
+
+# Wykonanie analiz
+
+W teorii zajmie to około 3h, ale w praktyce może trwać **kilka tygodni**, w zależności od tego, ile okaże się błędów w kodzie, który piszę. Wszystkie dotychczasowe ceny uwzględniają już koszt usuwania błędów, więc nic nie mam do doliczenia.
+
+# Ponowne generowanie analiz
+
+Na pewno po tym, jak wygeneruję analizy, będę proszony o wiele poprawek, doróbek, etc. Generalnie wszystko powinno być zaskakująco szybko, bo taki jest ostateczny cel tych wszystkich bibliotek. Zakładam, że poprawki ze strony Mamede nie będą wnosiły nowych klas analiz, bo tego nie potrafię wycenić. Jednak gdyby się okazało inaczej, to na pewno nie zostawię Panią samą, nawet gdy fundusze się skończą. W najgorszym razie będę musiał nadać pracy niższy priorytet.
+
+
+# Analiza regresji
+
+Jeśli konsultanci chcą mieć prawdziwy model statystyczny wyjaśniający jakiś aspekt fenotypu przy pomocy predyktorów, to będę musiał wykonać analizę regresji - w tym przypadku logistyczną.
+
+
+1. Przygotowanie zbioru danych. Duży problem, gdyż nie może być w analizie braków danych w predyktorach. Będę musiał albo zdecydować się, jakie podgrupy predyktorów wykorzystać, aby zmaksymalizować ogólnie rozumianą sensowność analizy (im więcej predyktorów, tym mniej ważnych przypadków, na których mogę wykonywać analizę). Poza tym być może będę mógł bardziej agresywnie rekodować zmienne tak, aby móc się pozbyć braków danych lub potraktować brak danych jako sygnał. Potencjalnie jest z tym dużo "zabawy"; w szczególności narzędzia do wyboru optymalnego podzbioru predyktorów chyba nie mam. **Koszt: 500zł od analizy, czyli 2000zł lub 2500zł jeśli dodamy grupę (kontrolną/badaną) jako zmienną zależną**
+
+2. Wykonanie analiz. Domyślnie wykonam regresje przy użyciu metody LASSO, a zamiast istotności użyję kroswalidacji. **Koszt: 500zł od analizy, czyli drugie *2000-2500zł*. Dołączę wykres współczynników regresji oraz ew. tabelę kodowania WoE. Czas pracy razem z przygotowaniem zbioru danych: 2 tyg. **.
+
+
+# Proste analizy związku grupy kontrolnej z każdą ze zmiennych
+
+**1000zł, czas pracy 1-3 dni. ** 
+
+
+-- 
+
+Adam Ryczkowski
+www.statystyka.net
++48505919892
+Skype:sisteczko
+Aktualny kalendarz

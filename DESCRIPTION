@@ -27,7 +27,9 @@ Imports:
   dbcasereport,
   lists2df,
   ReportGatherer,
-  itemNaming
+  itemNaming,
+  doMC,
+  glmnet
 Depends:
   data.table,
   danesurowe,
