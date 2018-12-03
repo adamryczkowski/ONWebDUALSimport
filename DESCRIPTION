@@ -11,15 +11,15 @@ License: GNU GPL-3
 Encoding: UTF-8
 LazyData: true
 Imports:
+  xlsx,
+  RCurl,
   stringr,
   plyr,
-  RCurl,
   XML,
   tibble,
   purrr,
   dplyr,
   readxl,
-  xlsx,
   lubridate,
   haven,
   Hmisc,
